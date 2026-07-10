@@ -5,4 +5,8 @@
     <RootNamespace>VirusTotalOneClick.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="VirusTotalOneClick.Core.Tests" />
+  </ItemGroup>
+
 </Project>
