@@ -67,3 +67,8 @@ dotnet_naming_style.underscore_camel_case.required_prefix = _
 [tests/**/*.cs]
 # Inline array literals read clearly at assertion call sites; tests are not hot paths.
 dotnet_diagnostic.CA1861.severity = none
+
+[tests/**/UploadHistoryStoreTests.cs]
+# The retry-under-lock test proves a synchronous API blocks until another writer
+# releases the file, so it deliberately synchronizes with a blocking Task.Wait.
+dotnet_diagnostic.xUnit1031.severity = none
