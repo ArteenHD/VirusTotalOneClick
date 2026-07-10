@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+build/
+publish/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.idea/
+.vscode/
+*.user
+*.suo
+*.rsuser
+*.sln.docstates
+
+# Test results
+TestResults/
+*.trx
+
+# Packaging output
+installer/output/
+*.nupkg
+
+# Windows filesystem noise
+Thumbs.db
+desktop.ini
