@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/VirusTotalOneClick.Core/VirusTotalOneClick.Core.csproj" />
+    <Project Path="src/VirusTotalOneClick/VirusTotalOneClick.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/VirusTotalOneClick.App.Tests/VirusTotalOneClick.App.Tests.csproj" />
+    <Project Path="tests/VirusTotalOneClick.Core.Tests/VirusTotalOneClick.Core.Tests.csproj" />
+  </Folder>
+</Solution>
