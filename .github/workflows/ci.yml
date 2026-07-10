@@ -1,0 +1,32 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Run validation gate
+        run: pwsh -NoProfile -File scripts/validate.ps1
+
+  commit-lint:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Lint commit messages
+        run: pwsh -NoProfile -File scripts/lint-commit-range.ps1 -BaseSha "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}" -HeadSha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
