@@ -1,0 +1,53 @@
+name: Bug report
+description: Something isn't working
+labels: ["bug"]
+body:
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Shown in the installer name or under Settings in Apps > Installed apps.
+      placeholder: "1.0.0"
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version
+      description: Run `winver` and copy the version and build, e.g. "Windows 11 24H2 (build 26100)".
+      placeholder: "Windows 11 24H2 (build 26100)"
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps, starting from a fresh Explorer window if relevant.
+      placeholder: |
+        1. Right-click a file larger than ...
+        2. Choose Upload to VirusTotal
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Include any error text shown in the window. Screenshots help — please blur file paths you don't want public.
+    validations:
+      required: true
+  - type: dropdown
+    id: install-type
+    attributes:
+      label: How did you install it?
+      options:
+        - Installer (VirusTotalOneClickSetup.exe)
+        - Portable zip
+    validations:
+      required: true
