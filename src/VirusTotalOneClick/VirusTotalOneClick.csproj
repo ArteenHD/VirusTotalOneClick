@@ -15,4 +15,8 @@
     <ProjectReference Include="..\VirusTotalOneClick.Core\VirusTotalOneClick.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="VirusTotalOneClick.App.Tests" />
+  </ItemGroup>
+
 </Project>
