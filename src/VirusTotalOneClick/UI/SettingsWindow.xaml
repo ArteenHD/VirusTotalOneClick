@@ -4,8 +4,8 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:local="clr-namespace:VirusTotalOneClick.UI"
-    Width="760"
-    Height="800"
+    Width="920"
+    Height="830"
     ResizeMode="NoResize">
     <local:AppWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
@@ -43,12 +43,22 @@
                     <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Account" />
                 </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <ui:PasswordBox
-                            x:Name="ApiKeyPasswordBox"
-                            PlaceholderText="Paste your VirusTotal API key"
-                            PasswordChanged="ApiKeyPasswordBox_PasswordChanged" />
-                        <StackPanel Orientation="Horizontal" Margin="{StaticResource ControlSpacing}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <ui:PasswordBox
+                                x:Name="ApiKeyPasswordBox"
+                                PlaceholderText="Paste your VirusTotal API key"
+                                PasswordChanged="ApiKeyPasswordBox_PasswordChanged" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Margin="{StaticResource LabelSpacing}"
+                                Text="{Binding ApiKeyStatusText}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Top">
                             <ui:Button Content="Save key" Command="{Binding SaveApiKeyCommand}" />
                             <ui:Button Content="Clear" Margin="8,0,0,0" Command="{Binding ClearApiKeyCommand}" />
                             <ui:SymbolIcon
@@ -58,96 +68,115 @@
                                 Foreground="{DynamicResource SystemFillColorSuccessBrush}"
                                 Visibility="{Binding HasSavedApiKey, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Margin="{StaticResource LabelSpacing}"
-                            Text="{Binding ApiKeyStatusText}" />
-                    </StackPanel>
+                    </Grid>
                 </ui:Card>
 
-                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
-                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="CloudArrowUp24" />
-                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Uploads" />
-                </StackPanel>
-                <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <RadioButton
-                            GroupName="UploadBehavior"
-                            Content="Upload files immediately"
-                            IsChecked="{Binding UploadImmediately}" />
-                        <RadioButton
-                            GroupName="UploadBehavior"
-                            Margin="{StaticResource ControlSpacing}"
-                            Content="Ask for confirmation before each upload"
-                            IsChecked="{Binding ConfirmBeforeFileUpload}" />
-                    </StackPanel>
-                </ui:Card>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
-                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="Folder24" />
-                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Folders" />
-                </StackPanel>
-                <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <RadioButton
-                            GroupName="FolderHandling"
-                            Content="Review folder contents and upload the selected files"
-                            IsChecked="{Binding ReviewSelectedFiles}" />
-                        <RadioButton
-                            GroupName="FolderHandling"
-                            Margin="{StaticResource ControlSpacing}"
-                            Content="Review, then upload everything as one zip archive"
-                            IsChecked="{Binding ReviewThenZip}" />
+                    <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                        <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="CloudArrowUp24" />
+                        <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Uploads" />
                     </StackPanel>
-                </ui:Card>
-
-                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
-                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="EyeOff24" />
-                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Anonymizer" />
-                </StackPanel>
-                <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <CheckBox Content="Replace submitted file names with anonymous names" IsChecked="{Binding ScrubSubmittedFilename}" />
-                        <CheckBox
-                            Margin="{StaticResource ControlSpacing}"
-                            Content="Hide folder structure inside uploaded zip archives"
-                            IsChecked="{Binding ScrubZipInternalPaths}" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Margin="{StaticResource ControlSpacing}"
-                            Text="These options reduce what is sent as names or archive paths. They do not make public VirusTotal uploads private." />
-                    </StackPanel>
-                </ui:Card>
-
-                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
-                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="History24" />
-                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="History" />
-                </StackPanel>
-                <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <CheckBox Content="Keep a local history of uploads on this computer" IsChecked="{Binding KeepLocalHistory}" />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Margin="{StaticResource LabelSpacing}"
-                            Text="{Binding HistoryStatusText}" />
-                        <StackPanel Orientation="Horizontal" Margin="{StaticResource ControlSpacing}">
-                            <ui:Button Content="Open history" Icon="{ui:SymbolIcon Open24}" Command="{Binding OpenHistoryCommand}" />
-                            <ui:Button Content="Clear history" Icon="{ui:SymbolIcon Delete24}" Margin="8,0,0,0" Command="{Binding ClearHistoryCommand}" />
+                    <ui:Card Grid.Row="1" Grid.Column="0" Margin="{StaticResource ControlSpacing}" VerticalAlignment="Stretch">
+                        <StackPanel>
+                            <RadioButton
+                                GroupName="UploadBehavior"
+                                Content="Upload files immediately"
+                                IsChecked="{Binding UploadImmediately}" />
+                            <RadioButton
+                                GroupName="UploadBehavior"
+                                Margin="{StaticResource ControlSpacing}"
+                                Content="Ask for confirmation before each upload"
+                                IsChecked="{Binding ConfirmBeforeFileUpload}" />
                         </StackPanel>
+                    </ui:Card>
+
+                    <StackPanel Grid.Row="0" Grid.Column="2" Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                        <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="Folder24" />
+                        <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Folders" />
                     </StackPanel>
-                </ui:Card>
+                    <ui:Card Grid.Row="1" Grid.Column="2" Margin="{StaticResource ControlSpacing}" VerticalAlignment="Stretch">
+                        <StackPanel>
+                            <RadioButton
+                                GroupName="FolderHandling"
+                                Content="Review folder contents and upload the selected files"
+                                IsChecked="{Binding ReviewSelectedFiles}" />
+                            <RadioButton
+                                GroupName="FolderHandling"
+                                Margin="{StaticResource ControlSpacing}"
+                                Content="Review, then upload everything as one zip archive"
+                                IsChecked="{Binding ReviewThenZip}" />
+                        </StackPanel>
+                    </ui:Card>
+
+                    <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                        <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="EyeOff24" />
+                        <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Anonymizer" />
+                    </StackPanel>
+                    <ui:Card Grid.Row="3" Grid.Column="0" Margin="{StaticResource ControlSpacing}" VerticalAlignment="Stretch">
+                        <StackPanel>
+                            <CheckBox Content="Replace submitted file names with anonymous names" IsChecked="{Binding ScrubSubmittedFilename}" />
+                            <CheckBox
+                                Margin="{StaticResource ControlSpacing}"
+                                Content="Hide folder structure inside uploaded zip archives"
+                                IsChecked="{Binding ScrubZipInternalPaths}" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Margin="{StaticResource ControlSpacing}"
+                                Text="These options reduce what is sent as names or archive paths. They do not make public VirusTotal uploads private." />
+                        </StackPanel>
+                    </ui:Card>
+
+                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                        <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="History24" />
+                        <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="History" />
+                    </StackPanel>
+                    <ui:Card Grid.Row="3" Grid.Column="2" Margin="{StaticResource ControlSpacing}" VerticalAlignment="Stretch">
+                        <StackPanel>
+                            <CheckBox Content="Keep a local history of uploads on this computer" IsChecked="{Binding KeepLocalHistory}" />
+                            <TextBlock
+                                Style="{StaticResource CaptionTextStyle}"
+                                Margin="{StaticResource LabelSpacing}"
+                                Text="{Binding HistoryStatusText}" />
+                            <StackPanel Orientation="Horizontal" Margin="{StaticResource ControlSpacing}">
+                                <ui:Button Content="Open history" Icon="{ui:SymbolIcon Open24}" Command="{Binding OpenHistoryCommand}" />
+                                <ui:Button Content="Clear history" Icon="{ui:SymbolIcon Delete24}" Margin="8,0,0,0" Command="{Binding ClearHistoryCommand}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </ui:Card>
+                </Grid>
 
                 <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
                     <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="PuzzlePiece24" />
                     <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Integration" />
                 </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
-                    <StackPanel>
-                        <CheckBox Content="Right-click menu" IsChecked="{Binding EnableClassicContextMenu}" />
-                        <CheckBox Margin="{StaticResource ControlSpacing}" Content="Send To menu" IsChecked="{Binding EnableSendToShortcut}" />
-                        <CheckBox Margin="{StaticResource ControlSpacing}" Content="Start Menu shortcuts" IsChecked="{Binding EnableStartMenuShortcuts}" />
-                        <CheckBox Margin="{StaticResource ControlSpacing}" Content="Open settings when Windows starts" IsChecked="{Binding LaunchOnStartup}" />
-                    </StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <CheckBox Grid.Row="0" Grid.Column="0" Content="Right-click menu" IsChecked="{Binding EnableClassicContextMenu}" />
+                        <CheckBox Grid.Row="0" Grid.Column="2" Content="Send To menu" IsChecked="{Binding EnableSendToShortcut}" />
+                        <CheckBox Grid.Row="1" Grid.Column="0" Margin="{StaticResource ControlSpacing}" Content="Start Menu shortcuts" IsChecked="{Binding EnableStartMenuShortcuts}" />
+                        <CheckBox Grid.Row="1" Grid.Column="2" Margin="{StaticResource ControlSpacing}" Content="Open settings when Windows starts" IsChecked="{Binding LaunchOnStartup}" />
+                    </Grid>
                 </ui:Card>
             </StackPanel>
         </ScrollViewer>
