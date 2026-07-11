@@ -9,6 +9,7 @@
     MinWidth="760"
     MinHeight="480">
     <local:AppWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         <Style x:Key="QueueStatusTextStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
             <Setter Property="TextTrimming" Value="CharacterEllipsis" />
@@ -190,11 +191,24 @@
                     Content="Upload"
                     Icon="{ui:SymbolIcon ArrowUpload24}"
                     Appearance="Primary"
+                    Visibility="{Binding ShowUploadButton, Converter={StaticResource BoolToVisibility}}"
                     Command="{Binding UploadCommand}" />
                 <ui:Button
                     Margin="8,0,0,0"
                     Content="Open result"
-                    Command="{Binding OpenResultCommand}" />
+                    Icon="{ui:SymbolIcon Open24}"
+                    Command="{Binding OpenResultCommand}">
+                    <ui:Button.Style>
+                        <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                            <Setter Property="Appearance" Value="Secondary" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsOpenResultPrimary}" Value="True">
+                                    <Setter Property="Appearance" Value="Primary" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                </ui:Button>
                 <ui:Button
                     Margin="8,0,0,0"
                     Content="{Binding CancelButtonText}"

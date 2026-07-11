@@ -143,6 +143,8 @@ public sealed class UploadProgressViewModel : ObservableObject
                 OnPropertyChanged(nameof(ProgressSummary));
                 OnPropertyChanged(nameof(ProgressPercent));
                 OnPropertyChanged(nameof(CancelButtonText));
+                OnPropertyChanged(nameof(ShowUploadButton));
+                OnPropertyChanged(nameof(IsOpenResultPrimary));
             }
         }
     }
@@ -155,11 +157,27 @@ public sealed class UploadProgressViewModel : ObservableObject
             if (SetProperty(ref _hasRun, value))
             {
                 OnPropertyChanged(nameof(CancelButtonText));
+                OnPropertyChanged(nameof(ShowUploadButton));
+                OnPropertyChanged(nameof(IsOpenResultPrimary));
             }
         }
     }
 
     public string CancelButtonText => _hasRun && !_isUploadRunning ? "Close" : "Cancel";
+
+    /// <summary>
+    /// False only once a run has settled with every row uploaded — re-running
+    /// could change nothing, so the button leaves the stage to "Open result".
+    /// </summary>
+    public bool ShowUploadButton =>
+        !_hasRun || _isUploadRunning || Items.Any(item => item.Status != "Uploaded");
+
+    /// <summary>
+    /// True when a settled run produced at least one result link; the footer
+    /// promotes "Open result" to the primary action.
+    /// </summary>
+    public bool IsOpenResultPrimary =>
+        _hasRun && !_isUploadRunning && Items.Any(item => item.HasResultUrl);
 
     public void OpenFirstResult()
     {

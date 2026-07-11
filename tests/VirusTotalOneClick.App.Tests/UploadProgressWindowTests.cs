@@ -451,4 +451,44 @@ public class UploadProgressWindowTests
             VisualTreeAssert.AssertWindowContainsText(window, @"C:\a.txt");
         });
     }
+
+    [Fact]
+    public void FooterPromotesOpenResultOnceEverythingUploaded()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(
+                    FileUploadWorkflowStatus.Completed,
+                    1,
+                    ItemResults: [Item(@"C:\a.txt", "uploaded", "https://www.virustotal.com/gui/file/abc")])));
+            using var closer = new WindowCloser(window);
+
+            Assert.True(window.ViewModel.ShowUploadButton);
+            Assert.False(window.ViewModel.IsOpenResultPrimary);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.ShowUploadButton);
+            Assert.True(window.ViewModel.IsOpenResultPrimary);
+        });
+    }
+
+    [Fact]
+    public void FooterKeepsUploadAvailableWhenRowsStillNeedWork()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.MissingApiKey, 0)));
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.True(window.ViewModel.ShowUploadButton);
+            Assert.False(window.ViewModel.IsOpenResultPrimary);
+        });
+    }
 }
