@@ -9,6 +9,24 @@
     MinWidth="760"
     MinHeight="480">
     <local:AppWindow.Resources>
+        <Style x:Key="QueueStatusTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Uploaded">
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Uploading">
+                    <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Failed">
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Needs API key">
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="QueueStatusIconStyle" TargetType="{x:Type ui:SymbolIcon}">
             <Setter Property="Symbol" Value="Clock24" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
@@ -46,12 +64,17 @@
 
         <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" />
 
-        <StackPanel Grid.Row="1" Margin="24,12,24,0">
-            <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Upload queue" />
-            <TextBlock
-                Style="{StaticResource CaptionTextStyle}"
-                Margin="{StaticResource LabelSpacing}"
-                Text="{Binding StatusText}" />
+        <StackPanel Grid.Row="1" Margin="24,12,24,0" Orientation="Horizontal">
+            <Border Style="{StaticResource PageIconWellStyle}">
+                <ui:SymbolIcon Style="{StaticResource PageIconStyle}" Symbol="CloudArrowUp24" />
+            </Border>
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Upload queue" />
+                <TextBlock
+                    Style="{StaticResource CaptionTextStyle}"
+                    Margin="{StaticResource LabelSpacing}"
+                    Text="{Binding StatusText}" />
+            </StackPanel>
         </StackPanel>
 
         <Grid Grid.Row="2" Margin="24,12,24,12">
@@ -87,8 +110,8 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
+            <Border Grid.Row="0" Style="{StaticResource ListContainerStyle}">
             <ListView
-                Grid.Row="0"
                 Background="Transparent"
                 BorderThickness="0"
                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
@@ -124,8 +147,8 @@
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock
+                                        Style="{StaticResource QueueStatusTextStyle}"
                                         Text="{Binding DisplayStatus}"
-                                        TextTrimming="CharacterEllipsis"
                                         ToolTip="{Binding DisplayStatus}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
@@ -144,6 +167,7 @@
                     </GridView>
                 </ListView.View>
             </ListView>
+            </Border>
             <ui:Card Grid.Row="1" Margin="{StaticResource ControlSpacing}">
                 <StackPanel Orientation="Horizontal">
                     <ui:SymbolIcon Symbol="Info24" VerticalAlignment="Center" />
@@ -164,6 +188,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <ui:Button
                     Content="Upload"
+                    Icon="{ui:SymbolIcon ArrowUpload24}"
                     Appearance="Primary"
                     Command="{Binding UploadCommand}" />
                 <ui:Button

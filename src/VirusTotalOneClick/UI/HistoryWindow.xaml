@@ -26,12 +26,17 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Upload history" />
-                <TextBlock
-                    Style="{StaticResource CaptionTextStyle}"
-                    Margin="{StaticResource LabelSpacing}"
-                    Text="{Binding CaptionText}" />
+            <StackPanel Grid.Column="0" Orientation="Horizontal">
+                <Border Style="{StaticResource PageIconWellStyle}">
+                    <ui:SymbolIcon Style="{StaticResource PageIconStyle}" Symbol="History24" />
+                </Border>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Upload history" />
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Margin="{StaticResource LabelSpacing}"
+                        Text="{Binding CaptionText}" />
+                </StackPanel>
             </StackPanel>
             <ui:TextBox
                 Grid.Column="1"
@@ -42,7 +47,8 @@
                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" />
         </Grid>
 
-        <Grid Grid.Row="2" Margin="24,0,24,0">
+        <Border Grid.Row="2" Margin="24,0,24,0" Style="{StaticResource ListContainerStyle}">
+        <Grid>
             <ListView
                 Background="Transparent"
                 BorderThickness="0"
@@ -128,6 +134,7 @@
                     Text="Files uploaded through the Explorer action will appear here." />
             </StackPanel>
         </Grid>
+        </Border>
 
         <Border
             Grid.Row="3"
@@ -136,10 +143,11 @@
             BorderThickness="0,1,0,0"
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <ui:Button Content="Open result" Command="{Binding OpenResultCommand}" />
+                <ui:Button Content="Open result" Icon="{ui:SymbolIcon Open24}" Command="{Binding OpenResultCommand}" />
                 <ui:Button
                     Margin="8,0,0,0"
                     Content="Clear history"
+                    Icon="{ui:SymbolIcon Delete24}"
                     Command="{Binding ClearHistoryCommand}" />
                 <ui:Button
                     Margin="8,0,0,0"

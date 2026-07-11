@@ -18,13 +18,27 @@
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource PagePadding}">
-                <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Set up VirusTotal OneClick" />
-                <TextBlock
-                    Style="{StaticResource CaptionTextStyle}"
-                    Margin="{StaticResource LabelSpacing}"
-                    Text="Files upload to VirusTotal when you use the Explorer action. Folder selections open for review first." />
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource PageIconWellStyle}">
+                        <ui:SymbolIcon Style="{StaticResource PageIconStyle}" Symbol="CloudArrowUp24" />
+                    </Border>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Set up VirusTotal OneClick" />
+                        <TextBlock
+                            Style="{StaticResource CaptionTextStyle}"
+                            Margin="{StaticResource LabelSpacing}"
+                            Text="Files upload to VirusTotal when you use the Explorer action. Folder selections open for review first." />
+                    </StackPanel>
+                </Grid>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="API Key" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="Key24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="API Key" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <StackPanel>
                         <ui:PasswordBox
@@ -38,7 +52,10 @@
                     </StackPanel>
                 </ui:Card>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="Upload Behavior" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="CloudArrowUp24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Upload Behavior" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <StackPanel>
                         <RadioButton
@@ -53,7 +70,10 @@
                     </StackPanel>
                 </ui:Card>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="Folders" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="Folder24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Folders" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <StackPanel>
                         <RadioButton
@@ -68,12 +88,18 @@
                     </StackPanel>
                 </ui:Card>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="History" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="History24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="History" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <CheckBox Content="Keep a local history of uploads on this computer" IsChecked="{Binding KeepLocalHistory}" />
                 </ui:Card>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="Anonymizer" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="EyeOff24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Anonymizer" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <StackPanel>
                         <CheckBox Content="Replace submitted file names with anonymous names" IsChecked="{Binding ScrubSubmittedFilename}" />
@@ -88,7 +114,10 @@
                     </StackPanel>
                 </ui:Card>
 
-                <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Margin="{StaticResource SectionSpacing}" Text="Explorer Integration" />
+                <StackPanel Orientation="Horizontal" Margin="{StaticResource SectionSpacing}">
+                    <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="PuzzlePiece24" />
+                    <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Explorer Integration" />
+                </StackPanel>
                 <ui:Card Margin="{StaticResource ControlSpacing}">
                     <StackPanel>
                         <CheckBox Content="Add to the right-click menu for files and folders" IsChecked="{Binding EnableClassicContextMenu}" />
