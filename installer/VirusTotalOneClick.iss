@@ -21,6 +21,7 @@ Compression=lzma2
 SolidCompression=yes
 OutputDir=output
 OutputBaseFilename=VirusTotalOneClickSetup
+SetupIconFile=..\src\VirusTotalOneClick\Assets\app-icon.ico
 UninstallDisplayIcon={app}\VirusTotalOneClick.exe
 
 [Files]
