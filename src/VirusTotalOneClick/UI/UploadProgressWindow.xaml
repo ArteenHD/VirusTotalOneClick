@@ -89,6 +89,9 @@
             </Grid.RowDefinitions>
             <ListView
                 Grid.Row="0"
+                Background="Transparent"
+                BorderThickness="0"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                 ItemsSource="{Binding Items}"
                 SelectionMode="Single">
                 <ListView.View>
@@ -127,7 +130,7 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Result" Width="220">
+                        <GridViewColumn Header="Result" Width="180">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock

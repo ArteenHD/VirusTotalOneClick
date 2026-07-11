@@ -44,19 +44,22 @@
 
         <Grid Grid.Row="2" Margin="24,0,24,0">
             <ListView
+                Background="Transparent"
+                BorderThickness="0"
+                Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                 ItemsSource="{Binding VisibleRows}"
                 SelectedItem="{Binding SelectedRow}"
                 SelectionMode="Single">
                 <ListView.View>
                     <GridView>
-                        <GridViewColumn Header="Date" Width="120">
+                        <GridViewColumn Header="Date" Width="110">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding DateDisplay}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Original file" Width="260">
+                        <GridViewColumn Header="Original file" Width="220">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock
@@ -73,14 +76,14 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="SHA-256" Width="140">
+                        <GridViewColumn Header="SHA-256" Width="130">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Sha256Display}" ToolTip="{Binding Sha256}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Mode" Width="70">
+                        <GridViewColumn Header="Mode" Width="60">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Mode}" />
@@ -94,7 +97,7 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Result" Width="200">
+                        <GridViewColumn Header="Result" Width="150">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock

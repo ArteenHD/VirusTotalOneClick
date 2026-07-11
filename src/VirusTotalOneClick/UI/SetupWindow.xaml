@@ -34,10 +34,6 @@
                         <TextBlock
                             Style="{StaticResource CaptionTextStyle}"
                             Margin="{StaticResource LabelSpacing}"
-                            Text="Stored with Windows current-user protection." />
-                        <TextBlock
-                            Style="{StaticResource CaptionTextStyle}"
-                            Margin="{StaticResource LabelSpacing}"
                             Text="{Binding ApiKeyStatusText}" />
                     </StackPanel>
                 </ui:Card>

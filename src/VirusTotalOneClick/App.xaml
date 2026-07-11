@@ -10,6 +10,25 @@
                 <ui:ControlsDictionary />
                 <ResourceDictionary Source="pack://application:,,,/VirusTotalOneClick;component/Themes/Tokens.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!--
+                Plain WPF ListView/GridView chrome (used by the history and upload
+                queue windows) isn't restyled by WPF-UI's ControlsDictionary, so it
+                renders with classic system colors instead of the app theme.
+            -->
+            <Style TargetType="{x:Type GridViewColumnHeader}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="HorizontalContentAlignment" Value="Left" />
+                <Setter Property="Padding" Value="8,0,8,8" />
+                <Setter Property="BorderThickness" Value="0,0,0,1" />
+                <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            </Style>
+            <Style TargetType="{x:Type ListViewItem}">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
