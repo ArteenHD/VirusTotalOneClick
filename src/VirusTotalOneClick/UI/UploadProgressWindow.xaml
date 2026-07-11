@@ -1,0 +1,178 @@
+<local:AppWindow
+    x:Class="VirusTotalOneClick.UI.UploadProgressWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+    xmlns:local="clr-namespace:VirusTotalOneClick.UI"
+    Width="900"
+    Height="600"
+    MinWidth="760"
+    MinHeight="480">
+    <local:AppWindow.Resources>
+        <Style x:Key="QueueStatusIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+            <Setter Property="Symbol" Value="Clock24" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Uploaded">
+                    <Setter Property="Symbol" Value="CheckmarkCircle24" />
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorSuccessBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Uploading">
+                    <Setter Property="Symbol" Value="ArrowUpload24" />
+                    <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Canceled">
+                    <Setter Property="Symbol" Value="DismissCircle24" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Failed">
+                    <Setter Property="Symbol" Value="ErrorCircle24" />
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Needs API key">
+                    <Setter Property="Symbol" Value="ErrorCircle24" />
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </local:AppWindow.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" />
+
+        <StackPanel Grid.Row="1" Margin="24,12,24,0">
+            <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Upload queue" />
+            <TextBlock
+                Style="{StaticResource CaptionTextStyle}"
+                Margin="{StaticResource LabelSpacing}"
+                Text="{Binding StatusText}" />
+        </StackPanel>
+
+        <Grid Grid.Row="2" Margin="24,12,24,12">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0" Margin="0,0,0,6">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Grid.Column="0"
+                    Style="{StaticResource CaptionTextStyle}"
+                    Text="{Binding ProgressSummary}" />
+                <TextBlock
+                    Grid.Column="1"
+                    Style="{StaticResource CaptionTextStyle}"
+                    FontWeight="SemiBold"
+                    Text="{Binding ProgressPercent}" />
+            </Grid>
+            <ProgressBar
+                Grid.Row="1"
+                Height="4"
+                Minimum="0"
+                Maximum="{Binding TotalCount, Mode=OneWay}"
+                Value="{Binding UploadedCount, Mode=OneWay}" />
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="24,0,24,0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <ListView
+                Grid.Row="0"
+                ItemsSource="{Binding Items}"
+                SelectionMode="Single">
+                <ListView.View>
+                    <GridView>
+                        <GridViewColumn Width="44">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ui:SymbolIcon Style="{StaticResource QueueStatusIconStyle}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Original file" Width="280">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        Text="{Binding OriginalPath}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding OriginalPath}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Submitted name" Width="160">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding SubmittedName}" TextTrimming="CharacterEllipsis" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Status" Width="150">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        Text="{Binding DisplayStatus}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding DisplayStatus}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                        <GridViewColumn Header="Result" Width="220">
+                            <GridViewColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock
+                                        Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                        Text="{Binding ResultUrl}"
+                                        TextTrimming="CharacterEllipsis"
+                                        ToolTip="{Binding ResultUrl}" />
+                                </DataTemplate>
+                            </GridViewColumn.CellTemplate>
+                        </GridViewColumn>
+                    </GridView>
+                </ListView.View>
+            </ListView>
+            <ui:Card Grid.Row="1" Margin="{StaticResource ControlSpacing}">
+                <StackPanel Orientation="Horizontal">
+                    <ui:SymbolIcon Symbol="Info24" VerticalAlignment="Center" />
+                    <TextBlock
+                        Style="{StaticResource CaptionTextStyle}"
+                        Margin="8,0,0,0"
+                        VerticalAlignment="Center"
+                        Text="Files upload one at a time using VirusTotal API v3." />
+                </StackPanel>
+            </ui:Card>
+        </Grid>
+
+        <Border
+            Grid.Row="4"
+            Padding="24,12"
+            BorderThickness="0,1,0,0"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <ui:Button
+                    Content="Upload"
+                    Appearance="Primary"
+                    Command="{Binding UploadCommand}" />
+                <ui:Button
+                    Margin="8,0,0,0"
+                    Content="Open result"
+                    Command="{Binding OpenResultCommand}" />
+                <ui:Button
+                    Margin="8,0,0,0"
+                    Content="{Binding CancelButtonText}"
+                    IsCancel="True"
+                    Command="{Binding CancelCommand}" />
+            </StackPanel>
+        </Border>
+    </Grid>
+</local:AppWindow>
