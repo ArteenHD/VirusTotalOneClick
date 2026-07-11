@@ -6,37 +6,52 @@
     xmlns:local="clr-namespace:VirusTotalOneClick.UI"
     Width="960"
     Height="680"
-    MinWidth="720"
+    MinWidth="760"
     MinHeight="560">
     <local:AppWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        <Style x:Key="TreeNodeIconStyle" TargetType="{x:Type ui:SymbolIcon}">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Symbol" Value="Document24" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsDirectory}" Value="True">
+                    <Setter Property="Symbol" Value="Folder24" />
+                    <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </local:AppWindow.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" />
 
         <StackPanel Grid.Row="1" Margin="24,12,24,0">
-            <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Review folder contents" />
-            <TextBlock
-                Style="{StaticResource CaptionTextStyle}"
-                Margin="{StaticResource LabelSpacing}"
-                Text="{Binding RootPath}" />
-            <ui:Card Margin="{StaticResource ControlSpacing}">
-                <StackPanel Orientation="Horizontal">
-                    <ui:SymbolIcon Symbol="Info24" VerticalAlignment="Top" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource PageIconWellStyle}">
+                    <ui:SymbolIcon Style="{StaticResource PageIconStyle}" Symbol="Folder24" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Review folder contents" />
                     <TextBlock
                         Style="{StaticResource CaptionTextStyle}"
-                        Margin="8,0,0,0"
-                        MaxWidth="820"
-                        Text="{Binding WarningText}" />
+                        Margin="{StaticResource LabelSpacing}"
+                        Text="{Binding RootPath}"
+                        TextTrimming="CharacterEllipsis"
+                        ToolTip="{Binding RootPath}" />
                 </StackPanel>
-            </ui:Card>
+            </Grid>
             <ui:Card
                 Margin="{StaticResource ControlSpacing}"
                 Visibility="{Binding HasTruncationWarning, Converter={StaticResource BoolToVisibility}}">
@@ -69,102 +84,145 @@
             </ui:Card>
         </StackPanel>
 
-        <Grid Grid.Row="2" Margin="24,8">
-            <StackPanel
-                HorizontalAlignment="Center"
-                VerticalAlignment="Center"
-                Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
-                <ui:ProgressRing IsIndeterminate="True" Width="48" Height="48" />
-                <TextBlock
-                    Style="{StaticResource BodyTextStyle}"
-                    Margin="{StaticResource ControlSpacing}"
-                    HorizontalAlignment="Center"
-                    Text="{Binding LoadingStatusText}" />
-            </StackPanel>
-            <TreeView ItemsSource="{Binding RootNodes}">
-                <TreeView.ItemContainerStyle>
-                    <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
-                        <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
-                    </Style>
-                </TreeView.ItemContainerStyle>
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+        <Grid Grid.Row="2" Margin="24,8,24,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="12" />
+                <ColumnDefinition Width="300" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource ListContainerStyle}">
+                <Grid>
+                    <TreeView ItemsSource="{Binding RootNodes}" Background="Transparent" BorderThickness="0">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem" BasedOn="{StaticResource {x:Type TreeViewItem}}">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal">
+                                    <CheckBox IsThreeState="False" IsChecked="{Binding IsChecked}" />
+                                    <ui:SymbolIcon Style="{StaticResource TreeNodeIconStyle}" />
+                                    <TextBlock
+                                        Style="{StaticResource BodyTextStyle}"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding Name}" />
+                                    <TextBlock
+                                        Style="{StaticResource CaptionTextStyle}"
+                                        Margin="8,0,0,0"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding DisplayDetail}" />
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                    <StackPanel
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Center"
+                        Visibility="{Binding IsLoading, Converter={StaticResource BoolToVisibility}}">
+                        <ui:ProgressRing IsIndeterminate="True" Width="48" Height="48" />
+                        <TextBlock
+                            Style="{StaticResource BodyTextStyle}"
+                            Margin="{StaticResource ControlSpacing}"
+                            HorizontalAlignment="Center"
+                            Text="{Binding LoadingStatusText}" />
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ui:Card Grid.Column="2" VerticalAlignment="Stretch" VerticalContentAlignment="Stretch">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal">
+                        <ui:SymbolIcon Style="{StaticResource SectionIconStyle}" Symbol="CheckmarkCircle24" />
+                        <TextBlock Style="{StaticResource SectionHeaderTextStyle}" Text="Review" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Grid.Row="1"
+                        Style="{StaticResource BodyTextStyle}"
+                        Margin="0,12,0,0"
+                        FontSize="15"
+                        FontWeight="SemiBold"
+                        Text="{Binding SelectionSummary}" />
+
+                    <Border Grid.Row="2" Style="{StaticResource InlineCalloutStyle}" Margin="0,12,0,0">
                         <StackPanel Orientation="Horizontal">
-                            <CheckBox IsThreeState="False" IsChecked="{Binding IsChecked}" />
-                            <TextBlock
-                                Style="{StaticResource BodyTextStyle}"
-                                Margin="4,0,0,0"
-                                VerticalAlignment="Center"
-                                Text="{Binding Name}" />
+                            <ui:SymbolIcon
+                                Symbol="Info24"
+                                FontSize="16"
+                                VerticalAlignment="Top"
+                                Margin="0,2,0,0"
+                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                             <TextBlock
                                 Style="{StaticResource CaptionTextStyle}"
                                 Margin="8,0,0,0"
-                                VerticalAlignment="Center"
-                                Text="{Binding DisplayDetail}" />
+                                MaxWidth="220"
+                                Text="{Binding WarningText}" />
                         </StackPanel>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
-        </Grid>
+                    </Border>
 
-        <Border
-            Grid.Row="3"
-            Padding="24,12"
-            BorderThickness="0,1,0,0"
-            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                    <TextBlock Style="{StaticResource BodyTextStyle}" Text="{Binding SelectionSummary}" />
                     <TextBlock
+                        Grid.Row="4"
                         Style="{StaticResource CaptionTextStyle}"
-                        Margin="{StaticResource LabelSpacing}"
+                        Margin="0,0,0,12"
                         Text="{Binding ActionStatusText}" />
-                </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <ui:Button
-                        x:Name="UploadButton"
-                        x:FieldModifier="internal"
-                        Command="{Binding UploadSelectedFilesCommand}">
-                        <ui:Button.Style>
-                            <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                <Setter Property="Appearance" Value="Secondary" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsUploadPrimary}" Value="True">
-                                        <Setter Property="Appearance" Value="Primary" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ui:Button.Style>
-                        <TextBlock Text="Upload selected files" />
-                    </ui:Button>
-                    <ui:Button
-                        x:Name="ZipButton"
-                        x:FieldModifier="internal"
-                        Margin="8,0,0,0"
-                        Command="{Binding ZipSelectedItemsCommand}">
-                        <ui:Button.Style>
-                            <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
-                                <Setter Property="Appearance" Value="Secondary" />
-                                <Style.Triggers>
-                                    <DataTrigger Binding="{Binding IsZipPrimary}" Value="True">
-                                        <Setter Property="Appearance" Value="Primary" />
-                                    </DataTrigger>
-                                </Style.Triggers>
-                            </Style>
-                        </ui:Button.Style>
-                        <TextBlock Text="Zip selected items and upload" />
-                    </ui:Button>
-                    <ui:Button
-                        Margin="8,0,0,0"
-                        Content="Cancel"
-                        IsCancel="True"
-                        Command="{Binding CancelCommand}" />
-                </StackPanel>
-            </Grid>
-        </Border>
+
+                    <StackPanel Grid.Row="5">
+                        <ui:Button
+                            x:Name="UploadButton"
+                            x:FieldModifier="internal"
+                            HorizontalAlignment="Stretch"
+                            Command="{Binding UploadSelectedFilesCommand}">
+                            <ui:Button.Style>
+                                <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                    <Setter Property="Appearance" Value="Secondary" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsUploadPrimary}" Value="True">
+                                            <Setter Property="Appearance" Value="Primary" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Button.Style>
+                            <TextBlock Text="Upload selected files" />
+                        </ui:Button>
+                        <ui:Button
+                            x:Name="ZipButton"
+                            x:FieldModifier="internal"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch"
+                            Command="{Binding ZipSelectedItemsCommand}">
+                            <ui:Button.Style>
+                                <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                    <Setter Property="Appearance" Value="Secondary" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsZipPrimary}" Value="True">
+                                            <Setter Property="Appearance" Value="Primary" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Button.Style>
+                            <TextBlock Text="Zip selected items and upload" />
+                        </ui:Button>
+                        <ui:Button
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch"
+                            Content="Cancel"
+                            IsCancel="True"
+                            Command="{Binding CancelCommand}" />
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+        </Grid>
     </Grid>
 </local:AppWindow>
