@@ -1,0 +1,386 @@
+using VirusTotalOneClick.Core;
+using VirusTotalOneClick.UI;
+
+namespace VirusTotalOneClick.AppTests;
+
+public class SettingsWindowTests
+{
+    private static readonly string ValidKey = new('c', 64);
+
+    [Fact]
+    public void ConstructsWithTheFixedSectionOrder()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal("VirusTotal OneClick", window.Title);
+            Assert.Equal(
+                ["Account", "Uploads", "Folders", "Anonymizer", "History", "Integration"],
+                window.SectionNames);
+        });
+    }
+
+    [Fact]
+    public void ControlStateRoundTripsThroughGetSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            window.ViewModel.ConfirmBeforeFileUpload = true;
+            window.ViewModel.ScrubSubmittedFilename = true;
+            window.ViewModel.EnableSendToShortcut = false;
+            window.ViewModel.EnableStartMenuShortcuts = false;
+            window.ViewModel.LaunchOnStartup = true;
+
+            var settings = window.GetSettings();
+
+            Assert.True(settings.ConfirmBeforeFileUpload);
+            Assert.True(settings.ScrubSubmittedFilename);
+            Assert.False(settings.EnableSendToShortcut);
+            Assert.False(settings.EnableStartMenuShortcuts);
+            Assert.True(settings.LaunchOnStartup);
+        });
+    }
+
+    [Fact]
+    public void SaveSettingsInvokesTheSaveActionAndShowsSavedStatus()
+    {
+        StaTestRunner.Run(() =>
+        {
+            AppSettings? saved = null;
+            var window = new SettingsWindow(AppSettings.Default, settings => saved = settings);
+            using var closer = new WindowCloser(window);
+
+            window.ViewModel.ScrubSubmittedFilename = true;
+            window.SaveSettings();
+
+            Assert.True(saved!.ScrubSubmittedFilename);
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void IntegrationFailureOnSaveIsAppendedAndRendered()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                applyIntegration: _ => throw new InvalidOperationException("registry denied"));
+            using var closer = new WindowCloser(window);
+
+            window.SaveSettings();
+
+            Assert.StartsWith("Settings saved", window.SettingsStatusText, StringComparison.Ordinal);
+            Assert.Contains("Windows integration failed", window.SettingsStatusText, StringComparison.Ordinal);
+            Assert.Contains("registry denied", window.SettingsStatusText, StringComparison.Ordinal);
+            VisualTreeAssert.AssertWindowContainsText(window, "registry denied");
+        });
+    }
+
+    [Fact]
+    public void ASaveFailureShortCircuitsBeforeIntegration()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var integrationRan = false;
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => throw new IOException("disk full"),
+                applyIntegration: _ => integrationRan = true);
+            using var closer = new WindowCloser(window);
+
+            window.SaveSettings();
+
+            Assert.False(integrationRan);
+            Assert.Equal("Could not save settings: disk full", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void TheSavedApiKeyNeverAppearsInSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            AppSettings? saved = null;
+            var window = new SettingsWindow(AppSettings.Default, settings => saved = settings, store);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+            window.SaveSettings();
+
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.DoesNotContain(ValidKey, saved!.ToString(), StringComparison.Ordinal);
+            Assert.Equal("API key saved.", window.ApiKeyStatusText);
+            Assert.True(window.ViewModel.HasSavedApiKey);
+        });
+    }
+
+    [Theory]
+    [InlineData("short")]
+    [InlineData("zzzz")]
+    public void BadlyFormattedKeysAreRejectedWithoutProbeOrSave(string badKey)
+    {
+        StaTestRunner.Run(() =>
+        {
+            var probes = 0;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (_, _) => { probes++; return Task.FromResult(ApiKeyValidationStatus.Valid); });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(badKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Equal(0, probes);
+            Assert.Null(store.ReadApiKey());
+            Assert.Equal("API key must be 64 hex characters.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void AValidKeyProbesExactlyOnceBeforeSaving()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var probes = 0;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (_, _) => { probes++; return Task.FromResult(ApiKeyValidationStatus.Valid); });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Equal(1, probes);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+        });
+    }
+
+    [Fact]
+    public void WhitespaceAroundThePastedKeyIsTrimmedBeforeProbeAndSave()
+    {
+        StaTestRunner.Run(() =>
+        {
+            string? probed = null;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (key, _) => { probed = key; return Task.FromResult(ApiKeyValidationStatus.Valid); });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("\t " + ValidKey + " \r\n");
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, probed);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+        });
+    }
+
+    [Fact]
+    public void TheCheckingStatusIsRenderedWhileTheProbeIsInFlight()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var validationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: new FakeSecretStore(),
+                validateApiKey: (_, _) =>
+                {
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            var saveTask = window.SaveApiKey();
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            Assert.Contains("Checking", window.ApiKeyStatusText, StringComparison.Ordinal);
+            VisualTreeAssert.AssertWindowContainsText(window, "Checking");
+
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+            saveTask.GetAwaiter().GetResult();
+            Assert.Equal("API key saved.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void TheTestKeySkipsTheProbeUnderAnAllowingPolicy()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var probes = 0;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (_, _) => { probes++; return Task.FromResult(ApiKeyValidationStatus.Valid); },
+                apiKeyValidator: new ApiKeyValidator(allowTestKey: true));
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("testdev");
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Equal(0, probes);
+            Assert.Equal("testdev", store.ReadApiKey());
+        });
+    }
+
+    [Fact]
+    public void TheTestKeyIsRejectedUnderTheDefaultPolicy()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(AppSettings.Default, secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("testdev");
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Null(store.ReadApiKey());
+            Assert.Equal("API key must be 64 hex characters.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void ARejectedKeyIsNotSavedAndSaysRejected()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (_, _) => Task.FromResult(ApiKeyValidationStatus.Rejected));
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Null(store.ReadApiKey());
+            Assert.False(window.ViewModel.HasSavedApiKey);
+            Assert.Contains("rejected", window.ApiKeyStatusText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void ANetworkErrorSavesTheKeyWithACouldNotReachWarning()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                validateApiKey: (_, _) => Task.FromResult(ApiKeyValidationStatus.NetworkError));
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.StartsWith("Could not reach VirusTotal", window.ApiKeyStatusText, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void ClearRemovesTheStoredKeyImmediately()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(AppSettings.Default, secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            Assert.True(window.ViewModel.HasSavedApiKey);
+
+            window.ViewModel.ClearApiKey();
+
+            Assert.Null(store.ReadApiKey());
+            Assert.False(window.ViewModel.HasSavedApiKey);
+            Assert.Equal(string.Empty, window.ViewModel.ApiKeyText);
+            Assert.Equal("API key cleared.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void KeepLocalHistoryTogglesTheLiveStatusBeforeSaving()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal("Local history is enabled.", window.ViewModel.HistoryStatusText);
+
+            window.ViewModel.KeepLocalHistory = false;
+
+            Assert.Equal("Local history is disabled.", window.ViewModel.HistoryStatusText);
+        });
+    }
+
+    [Fact]
+    public void ClearHistoryInvokesTheCallbackAndReportsImmediately()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var cleared = false;
+            var window = new SettingsWindow(AppSettings.Default, clearHistory: () => cleared = true);
+            using var closer = new WindowCloser(window);
+
+            window.ClearHistory();
+
+            Assert.True(cleared);
+            Assert.Equal("Local history cleared.", window.ViewModel.HistoryStatusText);
+        });
+    }
+
+    [Fact]
+    public void OpenHistoryIsDisabledWithoutACallbackAndWiredWithOne()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var without = new SettingsWindow(AppSettings.Default);
+            using var closerA = new WindowCloser(without);
+            Assert.False(without.ViewModel.OpenHistoryCommand.CanExecute(null));
+
+            var opened = false;
+            var with = new SettingsWindow(AppSettings.Default, openHistory: () => opened = true);
+            using var closerB = new WindowCloser(with);
+            Assert.True(with.ViewModel.OpenHistoryCommand.CanExecute(null));
+
+            with.OpenHistory();
+            Assert.True(opened);
+        });
+    }
+
+    [Fact]
+    public void TheAnonymizerCalloutIsHonestAndRendered()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            VisualTreeAssert.AssertWindowContainsText(
+                window, "They do not make public VirusTotal uploads private");
+        });
+    }
+}
