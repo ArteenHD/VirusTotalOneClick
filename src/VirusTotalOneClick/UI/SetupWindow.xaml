@@ -14,7 +14,11 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" ShowMaximize="False" />
+        <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" ShowMaximize="False">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/VirusTotalOneClick;component/Assets/app-icon.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource PagePadding}">

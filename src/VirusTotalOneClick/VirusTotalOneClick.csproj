@@ -15,6 +15,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\app-icon.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\VirusTotalOneClick.Core\VirusTotalOneClick.Core.csproj" />
   </ItemGroup>
 

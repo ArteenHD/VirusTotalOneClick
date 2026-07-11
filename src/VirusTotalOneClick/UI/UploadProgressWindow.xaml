@@ -63,7 +63,11 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" />
+        <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/VirusTotalOneClick;component/Assets/app-icon.png" />
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
         <StackPanel Grid.Row="1" Margin="24,12,24,0" Orientation="Horizontal">
             <Border Style="{StaticResource PageIconWellStyle}">
