@@ -28,4 +28,6 @@ public sealed class AppComposition
     public required Func<FolderZipUploadRequest, Func<CancellationToken, Task<FileUploadWorkflowResult>>> CreateZipUploadAction { get; init; }
 
     public required Func<string, CancellationToken, Task<ApiKeyValidationStatus>> ValidateApiKey { get; init; }
+
+    public required UI.ApiKeyValidator ApiKeyValidator { get; init; }
 }

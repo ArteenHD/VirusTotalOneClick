@@ -6,6 +6,12 @@ namespace VirusTotalOneClick;
 
 public static class AppBootstrapper
 {
+#if DEBUG
+    private const bool AllowTestKey = true;
+#else
+    private const bool AllowTestKey = false;
+#endif
+
     private static readonly Uri VirusTotalBaseUri = new("https://www.virustotal.com/api/v3/");
 
     // Uploads run up to the 650 MB service ceiling, so the shared client must not
@@ -64,6 +70,7 @@ public static class AppBootstrapper
                 new FolderZipUploadWorkflow(settings, secretStore, CreateVirusTotalClient, historyStore)
                     .RunAsync(request, cancellationToken),
             ValidateApiKey = validationClient.ValidateApiKeyAsync,
+            ApiKeyValidator = new UI.ApiKeyValidator(AllowTestKey),
         };
     }
 
