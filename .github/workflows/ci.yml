@@ -30,3 +30,12 @@ jobs:
 
       - name: Lint commit messages
         run: pwsh -NoProfile -File scripts/lint-commit-range.ps1 -BaseSha "${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}" -HeadSha "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
+
+  package-tests:
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Run packaging tests
+        run: pwsh -NoProfile -File scripts/test-packaging.ps1
