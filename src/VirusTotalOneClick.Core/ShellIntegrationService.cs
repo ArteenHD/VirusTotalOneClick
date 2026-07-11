@@ -22,11 +22,11 @@ public static class ShellIntegrationService
         [
             new ShellRegistryEntry($@"Software\Classes\*\shell\{MenuKeyName}", null, options.MenuText),
             new ShellRegistryEntry($@"Software\Classes\*\shell\{MenuKeyName}", "Icon", icon),
-            new ShellRegistryEntry($@"Software\Classes\*\shell\{MenuKeyName}", "MultiSelectModel", "Single"),
+            new ShellRegistryEntry($@"Software\Classes\*\shell\{MenuKeyName}", "MultiSelectModel", "Document"),
             new ShellRegistryEntry($@"Software\Classes\*\shell\{MenuKeyName}\command", null, command),
             new ShellRegistryEntry($@"Software\Classes\Directory\shell\{MenuKeyName}", null, options.MenuText),
             new ShellRegistryEntry($@"Software\Classes\Directory\shell\{MenuKeyName}", "Icon", icon),
-            new ShellRegistryEntry($@"Software\Classes\Directory\shell\{MenuKeyName}", "MultiSelectModel", "Single"),
+            new ShellRegistryEntry($@"Software\Classes\Directory\shell\{MenuKeyName}", "MultiSelectModel", "Document"),
             new ShellRegistryEntry($@"Software\Classes\Directory\shell\{MenuKeyName}\command", null, command),
         ];
     }

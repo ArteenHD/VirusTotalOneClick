@@ -30,11 +30,11 @@ public class ShellIntegrationServiceTests
         [
             new ShellRegistryEntry(@"Software\Classes\*\shell\VirusTotalOneClick", null, "Upload to VirusTotal"),
             new ShellRegistryEntry(@"Software\Classes\*\shell\VirusTotalOneClick", "Icon", expectedIcon),
-            new ShellRegistryEntry(@"Software\Classes\*\shell\VirusTotalOneClick", "MultiSelectModel", "Single"),
+            new ShellRegistryEntry(@"Software\Classes\*\shell\VirusTotalOneClick", "MultiSelectModel", "Document"),
             new ShellRegistryEntry(@"Software\Classes\*\shell\VirusTotalOneClick\command", null, expectedCommand),
             new ShellRegistryEntry(@"Software\Classes\Directory\shell\VirusTotalOneClick", null, "Upload to VirusTotal"),
             new ShellRegistryEntry(@"Software\Classes\Directory\shell\VirusTotalOneClick", "Icon", expectedIcon),
-            new ShellRegistryEntry(@"Software\Classes\Directory\shell\VirusTotalOneClick", "MultiSelectModel", "Single"),
+            new ShellRegistryEntry(@"Software\Classes\Directory\shell\VirusTotalOneClick", "MultiSelectModel", "Document"),
             new ShellRegistryEntry(@"Software\Classes\Directory\shell\VirusTotalOneClick\command", null, expectedCommand),
         ], entries);
     }

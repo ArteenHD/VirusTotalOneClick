@@ -44,7 +44,7 @@ public sealed class ShellVerbIntegrationTests : IDisposable
                 Assert.NotNull(menuKey);
                 Assert.Equal("Upload to VirusTotal", menuKey!.GetValue(null));
                 Assert.Equal($"\"{exePath}\",0", menuKey.GetValue("Icon"));
-                Assert.Equal("Single", menuKey.GetValue("MultiSelectModel"));
+                Assert.Equal("Document", menuKey.GetValue("MultiSelectModel"));
             }
 
             using (var commandKey = Registry.CurrentUser.OpenSubKey($@"{_sandboxKeyPath}\Software\Classes\*\shell\VirusTotalOneClick\command"))
