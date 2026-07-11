@@ -163,6 +163,12 @@ Describe 'installer definition' {
         $script:Iss | Should -Match 'Parameters:\s*"uninstall-shell"'
     }
 
+    It 'offers to open the app after interactive installs only' {
+        $script:Iss | Should -Match 'Flags:\s*postinstall nowait skipifsilent'
+        # Shell integration must be written before the app can open.
+        $script:Iss.IndexOf('install-shell') | Should -BeLessThan $script:Iss.IndexOf('postinstall')
+    }
+
     It 'never prompts for data removal in silent uninstalls' {
         $script:Iss | Should -Match 'UninstallSilent'
     }

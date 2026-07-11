@@ -31,6 +31,7 @@ Type: files; Name: "{app}\VirusTotalOneClick.pdb"
 
 [Run]
 Filename: "{app}\VirusTotalOneClick.exe"; Parameters: "install-shell"; Flags: runhidden waituntilterminated
+Filename: "{app}\VirusTotalOneClick.exe"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: postinstall nowait skipifsilent
 
 [UninstallRun]
 Filename: "{app}\VirusTotalOneClick.exe"; Parameters: "uninstall-shell"; Flags: runhidden waituntilterminated; RunOnceId: "UninstallShell"
