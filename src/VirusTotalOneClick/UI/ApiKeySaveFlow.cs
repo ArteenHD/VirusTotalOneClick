@@ -51,12 +51,16 @@ public static class ApiKeySaveFlow
 
             status = await validateApiKey(key, cancellationToken).ConfigureAwait(true);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             return new ApiKeySaveOutcome(false, "API key check canceled. Key was not saved.");
         }
         catch (Exception)
         {
+            // Includes an un-canceled TaskCanceledException from the validation
+            // HttpClient's own timeout — that is a network failure, not a
+            // cancellation the caller asked for, so it takes the same
+            // optimistic-save path as any other unreachable-VirusTotal case.
             status = ApiKeyValidationStatus.NetworkError;
         }
 

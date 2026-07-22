@@ -114,14 +114,33 @@ public class ApiKeySaveFlowTests
     public async Task ACanceledProbeAbortsWithoutSaving()
     {
         var store = new FakeSecretStore();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
         var outcome = await ApiKeySaveFlow.SaveAsync(
             ValidKey, store, DenyTestKey,
-            (_, _) => Task.FromException<ApiKeyValidationStatus>(new OperationCanceledException()),
-            onChecking: null, CancellationToken.None);
+            (_, token) => Task.FromException<ApiKeyValidationStatus>(new OperationCanceledException(token)),
+            onChecking: null, cts.Token);
 
         Assert.False(outcome.Saved);
         Assert.Equal("API key check canceled. Key was not saved.", outcome.StatusText);
         Assert.Null(store.ReadApiKey());
+    }
+
+    [Fact]
+    public async Task ATimedOutProbeIsTreatedAsANetworkErrorNotACancellation()
+    {
+        var store = new FakeSecretStore();
+        var outcome = await ApiKeySaveFlow.SaveAsync(
+            ValidKey, store, DenyTestKey,
+            (_, _) => Task.FromException<ApiKeyValidationStatus>(
+                new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout.")),
+            onChecking: null, CancellationToken.None);
+
+        Assert.True(outcome.Saved);
+        Assert.Equal(
+            "Could not reach VirusTotal to validate. Key saved and will be verified on first upload.",
+            outcome.StatusText);
+        Assert.Equal(ValidKey, store.ReadApiKey());
     }
 
     [Fact]
