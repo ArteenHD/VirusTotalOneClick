@@ -17,6 +17,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <ui:TitleBar Grid.Row="0" Title="VirusTotal OneClick" ShowMaximize="False">
@@ -211,5 +212,12 @@
                     Command="{Binding SaveSettingsCommand}" />
             </Grid>
         </Border>
+
+        <TextBlock
+            Grid.Row="3"
+            Margin="24,4,24,8"
+            HorizontalAlignment="Center"
+            Style="{StaticResource CaptionTextStyle}"
+            Text="{Binding VersionCaption}" />
     </Grid>
 </local:AppWindow>

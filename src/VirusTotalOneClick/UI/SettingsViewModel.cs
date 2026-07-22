@@ -100,6 +100,8 @@ public sealed class SettingsViewModel : ObservableObject
 
     public RelayCommand OpenHistoryCommand { get; }
 
+    public string VersionCaption { get; } = $"Version {AppVersionInfo.GetInformationalVersion()}";
+
     public string ApiKeyText
     {
         get => _apiKeyText;

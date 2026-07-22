@@ -496,4 +496,26 @@ public class SettingsWindowTests
                 window, "They do not make public VirusTotal uploads private");
         });
     }
+
+    [Fact]
+    public void TheVersionCaptionShowsTheHelpersValue()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            VisualTreeAssert.AssertWindowContainsText(
+                window, $"Version {AppVersionInfo.GetInformationalVersion()}");
+        });
+    }
+
+    [Fact]
+    public void TheVersionHelperReturnsANonEmptySemverShapedString()
+    {
+        var version = AppVersionInfo.GetInformationalVersion();
+
+        Assert.False(string.IsNullOrWhiteSpace(version));
+        Assert.Matches(@"^\d+\.\d+\.\d+", version);
+    }
 }
