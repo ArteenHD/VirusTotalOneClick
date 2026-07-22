@@ -35,6 +35,40 @@ public class FolderScannerTests
     }
 
     [Fact]
+    public void ScanIsNotTruncatedWhenTheTreeContainsExactlyMaxFiles()
+    {
+        using var folder = new TemporaryFolder();
+        var files = new[]
+        {
+            folder.CreateFile("file-0.txt"),
+            folder.CreateFile("file-1.txt"),
+            folder.CreateFile("file-2.txt"),
+        };
+
+        var result = FolderScanner.Scan(folder.Path, new FolderScanOptions(MaxFiles: 3));
+
+        Assert.False(result.Truncated);
+        Assert.Equal(
+            files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray(),
+            result.Files.OrderBy(f => f, StringComparer.OrdinalIgnoreCase).ToArray());
+    }
+
+    [Fact]
+    public void ScanIsTruncatedWhenTheTreeContainsOneMoreThanMaxFiles()
+    {
+        using var folder = new TemporaryFolder();
+        for (var i = 0; i < 4; i++)
+        {
+            folder.CreateFile($"file-{i}.txt");
+        }
+
+        var result = FolderScanner.Scan(folder.Path, new FolderScanOptions(MaxFiles: 3));
+
+        Assert.True(result.Truncated);
+        Assert.Equal(3, result.Files.Count);
+    }
+
+    [Fact]
     public void NonPositiveMaxFilesReturnsTruncatedWithoutEnumeratingAnything()
     {
         var touched = false;
@@ -52,7 +86,7 @@ public class FolderScannerTests
     }
 
     [Fact]
-    public void ScanStopsPullingFromLazyEnumerationTheMomentMaxFilesIsReached()
+    public void ScanPullsAtMostOneFileBeyondMaxFilesFromALazyEnumerationToConfirmTruncation()
     {
         var pulled = 0;
 
@@ -74,7 +108,7 @@ public class FolderScannerTests
 
         Assert.True(result.Truncated);
         Assert.Single(result.Files);
-        Assert.Equal(1, pulled);
+        Assert.Equal(2, pulled);
     }
 
     [Fact]
@@ -102,6 +136,60 @@ public class FolderScannerTests
 
         Assert.True(result.Truncated);
         Assert.Equal(new[] { @"C:\root\alpha\first.txt" }, result.Files);
+    }
+
+    [Fact]
+    public void ExactlyAtCapWithATrailingEmptySiblingDirectoryIsNotTruncated()
+    {
+        var filesByDirectory = new Dictionary<string, string[]>
+        {
+            [@"C:\root"] = [],
+            [@"C:\root\dirA"] = [@"C:\root\dirA\a.txt", @"C:\root\dirA\b.txt", @"C:\root\dirA\c.txt"],
+            [@"C:\root\dirB"] = [],
+        };
+        var directoriesByDirectory = new Dictionary<string, string[]>
+        {
+            [@"C:\root"] = [@"C:\root\dirA", @"C:\root\dirB"],
+            [@"C:\root\dirA"] = [],
+            [@"C:\root\dirB"] = [],
+        };
+
+        var result = FolderScanner.Scan(
+            @"C:\root",
+            new FolderScanOptions(MaxFiles: 3),
+            directory => filesByDirectory[directory],
+            directory => directoriesByDirectory[directory],
+            _ => FileAttributes.Directory);
+
+        Assert.False(result.Truncated);
+        Assert.Equal(3, result.Files.Count);
+    }
+
+    [Fact]
+    public void OneMoreFileInATrailingSiblingDirectoryIsTruncated()
+    {
+        var filesByDirectory = new Dictionary<string, string[]>
+        {
+            [@"C:\root"] = [],
+            [@"C:\root\dirA"] = [@"C:\root\dirA\a.txt", @"C:\root\dirA\b.txt", @"C:\root\dirA\c.txt"],
+            [@"C:\root\dirB"] = [@"C:\root\dirB\d.txt"],
+        };
+        var directoriesByDirectory = new Dictionary<string, string[]>
+        {
+            [@"C:\root"] = [@"C:\root\dirA", @"C:\root\dirB"],
+            [@"C:\root\dirA"] = [],
+            [@"C:\root\dirB"] = [],
+        };
+
+        var result = FolderScanner.Scan(
+            @"C:\root",
+            new FolderScanOptions(MaxFiles: 3),
+            directory => filesByDirectory[directory],
+            directory => directoriesByDirectory[directory],
+            _ => FileAttributes.Directory);
+
+        Assert.True(result.Truncated);
+        Assert.Equal(3, result.Files.Count);
     }
 
     [Fact]
@@ -164,7 +252,7 @@ public class FolderScannerTests
     }
 
     [Fact]
-    public void ReparsePointRootIsSkippedWithoutEnumeratingItsFiles()
+    public void ReparsePointRootIsSkippedWithoutEnumeratingItsFilesButReportsAnError()
     {
         var enumerated = false;
 
@@ -178,6 +266,8 @@ public class FolderScannerTests
         Assert.False(enumerated);
         Assert.Empty(result.Files);
         Assert.False(result.Truncated);
+        Assert.Single(result.Errors);
+        Assert.Contains(@"C:\link-root", result.Errors[0], StringComparison.Ordinal);
     }
 
     [Fact]

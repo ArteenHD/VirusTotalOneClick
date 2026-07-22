@@ -242,6 +242,76 @@ public class WindowFactoryTests
     }
 
     [Fact]
+    public void ExactlyAtCapAcrossSelectionsWithATrailingEmptyFolderIsNotTruncated()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var dirA = Directory.CreateDirectory(Path.Combine(folder.Path, "first")).FullName;
+            File.WriteAllText(Path.Combine(dirA, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(dirA, "b.txt"), "b");
+            var dirB = Directory.CreateDirectory(Path.Combine(folder.Path, "second")).FullName;
+            var factory = new WindowFactory(
+                Composition(),
+                folderScanOptions: new FolderScanOptions(MaxFiles: 2));
+
+            var review = (FolderReviewWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [dirA, dirB]));
+            using var closer = new WindowCloser(review);
+            WaitForScan(review);
+
+            Assert.False(review.ViewModel.HasTruncationWarning);
+            Assert.Equal(2, review.CandidateFileCount);
+        });
+    }
+
+    [Fact]
+    public void OneMoreFileInATrailingFolderAfterTheCapIsTruncated()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var dirA = Directory.CreateDirectory(Path.Combine(folder.Path, "first")).FullName;
+            File.WriteAllText(Path.Combine(dirA, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(dirA, "b.txt"), "b");
+            var dirB = Directory.CreateDirectory(Path.Combine(folder.Path, "second")).FullName;
+            File.WriteAllText(Path.Combine(dirB, "c.txt"), "c");
+            var factory = new WindowFactory(
+                Composition(),
+                folderScanOptions: new FolderScanOptions(MaxFiles: 2));
+
+            var review = (FolderReviewWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [dirA, dirB]));
+            using var closer = new WindowCloser(review);
+            WaitForScan(review);
+
+            Assert.True(review.ViewModel.HasTruncationWarning);
+            Assert.Equal(2, review.CandidateFileCount);
+        });
+    }
+
+    [Fact]
+    public void ALooseFileSelectionAfterTheCapIsTreatedAsADroppedFile()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var dirA = Directory.CreateDirectory(Path.Combine(folder.Path, "first")).FullName;
+            File.WriteAllText(Path.Combine(dirA, "a.txt"), "a");
+            File.WriteAllText(Path.Combine(dirA, "b.txt"), "b");
+            var looseFile = folder.CreateFile("loose.txt", "content");
+            var factory = new WindowFactory(
+                Composition(),
+                folderScanOptions: new FolderScanOptions(MaxFiles: 2));
+
+            var review = (FolderReviewWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [dirA, looseFile]));
+            using var closer = new WindowCloser(review);
+            WaitForScan(review);
+
+            Assert.True(review.ViewModel.HasTruncationWarning);
+            Assert.Equal(2, review.CandidateFileCount);
+        });
+    }
+
+    [Fact]
     public void ReviewUploadHandsOffToARealProgressWindowAndClosesTheReview()
     {
         StaTestRunner.Run(() =>

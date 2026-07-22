@@ -157,8 +157,24 @@ public sealed class WindowFactory
             var remainingFileCount = _folderScanOptions.MaxFiles - files.Count;
             if (remainingFileCount <= 0)
             {
+                if (selection.IsDirectory)
+                {
+                    // The budget is already spent; probe for a single file rather
+                    // than assuming the worst. A remaining folder that turns out to
+                    // be empty drops nothing.
+                    var probe = FolderScanner.Scan(
+                        selection.Path,
+                        _folderScanOptions with { MaxFiles = 1 },
+                        cancellationToken);
+                    errors.AddRange(probe.Errors);
+                    truncated |= probe.Files.Count > 0;
+                    continue;
+                }
+
+                // A loose file selection that survives past an exhausted budget is
+                // itself the file that gets dropped.
                 truncated = true;
-                break;
+                continue;
             }
 
             if (selection.IsDirectory)

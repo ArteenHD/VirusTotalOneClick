@@ -33,13 +33,16 @@ public static class FolderScanner
         var errors = new List<string>();
         var pending = new Queue<string>();
         pending.Enqueue(rootPath);
+        var isRoot = true;
 
         while (pending.Count > 0)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var directory = pending.Dequeue();
+            var isThisDirectoryTheRoot = isRoot;
+            isRoot = false;
 
-            if (IsReparsePoint(directory, getAttributes, errors))
+            if (IsReparsePoint(directory, isThisDirectoryTheRoot, getAttributes, errors))
             {
                 continue;
             }
@@ -66,23 +69,23 @@ public static class FolderScanner
         List<string> errors,
         CancellationToken cancellationToken)
     {
-        if (files.Count >= maxFiles)
-        {
-            return true;
-        }
-
         try
         {
-            foreach (var file in enumerateFiles(directory))
+            // Even once the cap is already full, this directory must still be
+            // probed: exhausting it with zero files proves nothing was lost here,
+            // and only an observed file (this directory's or a later one's) proves
+            // the tree actually holds more than the cap allows.
+            using var enumerator = enumerateFiles(directory).GetEnumerator();
+            while (enumerator.MoveNext())
             {
                 cancellationToken.ThrowIfCancellationRequested();
-
-                files.Add(file);
 
                 if (files.Count >= maxFiles)
                 {
                     return true;
                 }
+
+                files.Add(enumerator.Current);
             }
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
@@ -114,12 +117,22 @@ public static class FolderScanner
 
     private static bool IsReparsePoint(
         string directory,
+        bool isRoot,
         Func<string, FileAttributes> getAttributes,
         List<string> errors)
     {
         try
         {
-            return getAttributes(directory).HasFlag(FileAttributes.ReparsePoint);
+            var isLink = getAttributes(directory).HasFlag(FileAttributes.ReparsePoint);
+            if (isLink && isRoot)
+            {
+                // A reparse point nested inside the tree is skipped quietly, but the
+                // scan root is an explicit user action; a silent empty result would
+                // look like nothing was there instead of a link that wasn't followed.
+                errors.Add($"{directory}: This folder is a link and was not scanned.");
+            }
+
+            return isLink;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DirectoryNotFoundException)
         {
