@@ -346,6 +346,69 @@ public class WindowFactoryTests
     }
 
     [Fact]
+    public void ReviewFileHandoffRetryRebuildsForOnlyTheFailedPath()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var ok = folder.CreateFile("ok.txt", "content");
+            var bad = folder.CreateFile("bad.txt", "content");
+            var calls = new List<IReadOnlyList<string>>();
+            var factory = new WindowFactory(Composition(
+                createUploadAction: paths =>
+                {
+                    calls.Add(paths);
+                    return _ => paths.Count == 2
+                        ? Task.FromResult(new FileUploadWorkflowResult(
+                            FileUploadWorkflowStatus.CompletedWithFailures,
+                            2,
+                            FailedCount: 1,
+                            ItemResults:
+                            [
+                                new FileUploadWorkflowItemResult(ok, "ok.txt", "uploaded", "https://www.virustotal.com/gui/file/ok"),
+                                new FileUploadWorkflowItemResult(bad, "bad.txt", "failed", null, "quota exceeded"),
+                            ]))
+                        : Task.FromResult(new FileUploadWorkflowResult(
+                            FileUploadWorkflowStatus.Completed,
+                            1,
+                            ItemResults: [new FileUploadWorkflowItemResult(bad, "bad.txt", "uploaded", "https://www.virustotal.com/gui/file/bad")]));
+                }));
+
+            var review = (FolderReviewWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [folder.Path]));
+            WaitForScan(review);
+            review.Show();
+
+            UploadProgressWindow? progress = null;
+            try
+            {
+                review.UploadSelectedFilesAsync(CancellationToken.None).GetAwaiter().GetResult();
+                progress = System.Windows.Application.Current.Windows.OfType<UploadProgressWindow>().Single();
+
+                // Showing the review's handed-off progress window already ran the
+                // auto-start to completion synchronously (Loaded fires during
+                // Show() on this harness's STA thread); TryTriggerAutoStart is
+                // therefore a safe no-op here rather than the first trigger.
+                progress.TryTriggerAutoStart()?.GetAwaiter().GetResult();
+                Assert.Single(calls);
+
+                progress.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+                Assert.Equal(2, calls.Count);
+                Assert.Equal([bad], calls[1]);
+                Assert.Equal(["Uploaded", "Uploaded"], progress.QueueItemStatuses);
+            }
+            finally
+            {
+                progress?.Close();
+                if (review.IsVisible)
+                {
+                    review.Close();
+                }
+            }
+        });
+    }
+
+    [Fact]
     public void ReviewZipHandsOffASingleFolderRowToTheProgressWindow()
     {
         StaTestRunner.Run(() =>
@@ -413,6 +476,80 @@ public class WindowFactoryTests
             var progressStrict = (UploadProgressWindow)strict.Create(new CommandLineOptions(AppMode.Upload, [file]));
             using var closerB = new WindowCloser(progressStrict);
             Assert.False(progressStrict.IsDevMode);
+        });
+    }
+
+    [Fact]
+    public void NeedsKeyRowsOpenTheRealSettingsWindowThroughTheInjectedAction()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var file = folder.CreateFile("needs-key.txt", "content");
+            var factory = new WindowFactory(Composition(
+                createUploadAction: _ => _ => Task.FromResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.MissingApiKey, 0))));
+
+            var progress = (UploadProgressWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [file]));
+            using var closer = new WindowCloser(progress);
+
+            progress.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.True(progress.ViewModel.ShowOpenSettings);
+
+            SettingsWindow? opened = null;
+            try
+            {
+                progress.ViewModel.OpenSettingsCommand.Execute(null);
+                opened = System.Windows.Application.Current.Windows.OfType<SettingsWindow>().Single();
+            }
+            finally
+            {
+                opened?.Close();
+            }
+        });
+    }
+
+    [Fact]
+    public void RetryingAfterAPartialFailureRebuildsTheActionForOnlyTheFailedPaths()
+    {
+        StaTestRunner.Run(() =>
+        {
+            using var folder = new TemporaryFolder();
+            var ok = folder.CreateFile("ok.txt", "content");
+            var bad = folder.CreateFile("bad.txt", "content");
+            var calls = new List<IReadOnlyList<string>>();
+            var factory = new WindowFactory(Composition(
+                createUploadAction: paths =>
+                {
+                    calls.Add(paths);
+                    var attempt = calls.Count;
+                    return _ => attempt == 1
+                        ? Task.FromResult(new FileUploadWorkflowResult(
+                            FileUploadWorkflowStatus.CompletedWithFailures,
+                            2,
+                            FailedCount: 1,
+                            ItemResults:
+                            [
+                                new FileUploadWorkflowItemResult(ok, "ok.txt", "uploaded", "https://www.virustotal.com/gui/file/ok"),
+                                new FileUploadWorkflowItemResult(bad, "bad.txt", "failed", null, "quota exceeded"),
+                            ]))
+                        : Task.FromResult(new FileUploadWorkflowResult(
+                            FileUploadWorkflowStatus.Completed,
+                            1,
+                            ItemResults: [new FileUploadWorkflowItemResult(bad, "bad.txt", "uploaded", "https://www.virustotal.com/gui/file/bad")]));
+                }));
+
+            var progress = (UploadProgressWindow)factory.Create(new CommandLineOptions(AppMode.Upload, [ok, bad]));
+            using var closer = new WindowCloser(progress);
+
+            progress.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.Single(calls);
+            Assert.Equal([ok, bad], calls[0]);
+
+            progress.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.Equal(2, calls.Count);
+            Assert.Equal([bad], calls[1]);
+            Assert.Equal(["Uploaded", "Uploaded"], progress.QueueItemStatuses);
         });
     }
 

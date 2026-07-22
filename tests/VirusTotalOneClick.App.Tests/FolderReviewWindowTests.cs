@@ -268,14 +268,16 @@ public class FolderReviewWindowTests
             IReadOnlyList<FileSelection>? handedSelections = null;
             var handedAutoStart = false;
             var handoffCompleted = false;
+            Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? handedFactory = null;
             var window = new FolderReviewWindow(
                 @"C:\root",
                 ImmediateScan(ScanOf(@"C:\root\a.txt")),
                 uploadActionFactory: paths => _ => Task.FromResult(CompletedResult(paths.Count)),
-                openUploadProgress: (selections, _, autoStart) =>
+                openUploadProgress: (selections, _, autoStart, uploadActionFactory) =>
                 {
                     handedSelections = selections;
                     handedAutoStart = autoStart;
+                    handedFactory = uploadActionFactory;
                 },
                 progressHandoffCompletedAction: () => handoffCompleted = true);
             using var closer = new WindowCloser(window);
@@ -289,6 +291,13 @@ public class FolderReviewWindowTests
             Assert.True(handedAutoStart);
             Assert.True(handoffCompleted);
             Assert.Equal("Upload opened in progress window.", window.ActionStatusText);
+
+            // The file hand-off keeps a per-path retry seam so a later
+            // retry can resubmit only what has not uploaded yet.
+            Assert.NotNull(handedFactory);
+            var retryAction = handedFactory!([@"C:\root\a.txt"]);
+            var retryResult = retryAction(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.Equal(1, retryResult.ItemCount);
         });
     }
 
@@ -299,6 +308,7 @@ public class FolderReviewWindowTests
         {
             FolderZipUploadRequest? request = null;
             IReadOnlyList<FileSelection>? handedSelections = null;
+            Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? handedFactory = null;
             var window = new FolderReviewWindow(
                 @"C:\root",
                 ImmediateScan(ScanOf(@"C:\root\a.txt", @"C:\root\sub\b.txt")),
@@ -307,7 +317,11 @@ public class FolderReviewWindowTests
                     request = zipRequest;
                     return _ => Task.FromResult(CompletedResult(1));
                 },
-                openUploadProgress: (selections, _, _) => handedSelections = selections);
+                openUploadProgress: (selections, _, _, uploadActionFactory) =>
+                {
+                    handedSelections = selections;
+                    handedFactory = uploadActionFactory;
+                });
             using var closer = new WindowCloser(window);
             window.ScanCompletion.GetAwaiter().GetResult();
 
@@ -319,6 +333,10 @@ public class FolderReviewWindowTests
             Assert.Equal(@"C:\root", selection.Path);
             Assert.True(selection.IsDirectory);
             Assert.Equal("Zip upload opened in progress window.", window.ActionStatusText);
+
+            // The zip bundles the whole selection into one upload; there is
+            // no per-path subset to retry, so no retry seam is offered.
+            Assert.Null(handedFactory);
         });
     }
 

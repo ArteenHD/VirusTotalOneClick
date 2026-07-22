@@ -107,7 +107,8 @@
                 Height="4"
                 Minimum="0"
                 Maximum="{Binding TotalCount, Mode=OneWay}"
-                Value="{Binding UploadedCount, Mode=OneWay}" />
+                Value="{Binding UploadedCount, Mode=OneWay}"
+                IsIndeterminate="{Binding IsIndeterminate, Mode=OneWay}" />
         </Grid>
 
         <Grid Grid.Row="3" Margin="24,0,24,0">
@@ -192,6 +193,13 @@
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <ui:Button
+                    Content="Open settings"
+                    Icon="{ui:SymbolIcon Settings24}"
+                    Appearance="Secondary"
+                    Visibility="{Binding ShowOpenSettings, Converter={StaticResource BoolToVisibility}}"
+                    Command="{Binding OpenSettingsCommand}" />
+                <ui:Button
+                    Margin="8,0,0,0"
                     Content="Upload"
                     Icon="{ui:SymbolIcon ArrowUpload24}"
                     Appearance="Primary"

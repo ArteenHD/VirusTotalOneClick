@@ -16,7 +16,11 @@ public partial class FolderReviewWindow : AppWindow, IDisposable
         Func<FolderZipUploadRequest, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? zipUploadActionFactory = null,
         FolderUploadMode defaultFolderMode = FolderUploadMode.ReviewSelectedFiles,
         bool isDevMode = false,
-        Action<IReadOnlyList<FileSelection>, Func<CancellationToken, Task<FileUploadWorkflowResult>>, bool>? openUploadProgress = null,
+        Action<
+            IReadOnlyList<FileSelection>,
+            Func<CancellationToken, Task<FileUploadWorkflowResult>>,
+            bool,
+            Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>?>? openUploadProgress = null,
         Action? progressHandoffCompletedAction = null,
         int scanFileLimit = 5000)
     {

@@ -15,7 +15,9 @@ public partial class UploadProgressWindow : AppWindow
         bool autoStart = false,
         bool isDevMode = false,
         Action<string>? openResultUrl = null,
-        Func<string?, bool>? canOpenResultUrl = null)
+        Func<string?, bool>? canOpenResultUrl = null,
+        Action? openSettings = null,
+        Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? uploadActionFactory = null)
     {
         IsDevMode = isDevMode;
         _autoStart = autoStart;
@@ -25,7 +27,9 @@ public partial class UploadProgressWindow : AppWindow
             autoStart,
             openResultUrl,
             canOpenResultUrl,
-            cancelAction: Close);
+            cancelAction: Close,
+            openSettings: openSettings,
+            uploadActionFactory: uploadActionFactory);
         DataContext = _viewModel;
         InitializeComponent();
 

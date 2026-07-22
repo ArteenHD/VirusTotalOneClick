@@ -395,6 +395,7 @@ public class UploadProgressWindowTests
             Assert.Equal("Upload canceled.", window.StatusText);
             Assert.Equal("Canceled", window.FirstQueueItemStatus);
             Assert.Equal("Close", window.ViewModel.CancelButtonText);
+            Assert.False(window.ViewModel.IsIndeterminate);
         });
     }
 
@@ -476,6 +477,43 @@ public class UploadProgressWindowTests
     }
 
     [Fact]
+    public void TheProgressBarGoesIndeterminateWhileRunningAndSettlesOnCompletion()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var gate = new TaskCompletionSource<FileUploadWorkflowResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var window = new UploadProgressWindow(Files(@"C:\a.txt"), _ => gate.Task);
+            using var closer = new WindowCloser(window);
+
+            Assert.False(window.ViewModel.IsIndeterminate);
+
+            var run = window.RunUploadAsync(CancellationToken.None);
+            Assert.True(window.ViewModel.IsIndeterminate);
+
+            gate.SetResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.Completed, 1));
+            run.GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.IsIndeterminate);
+        });
+    }
+
+    [Fact]
+    public void TheProgressBarSettlesAfterAFailure()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt"),
+                _ => Task.FromException<FileUploadWorkflowResult>(new InvalidOperationException("boom")));
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.IsIndeterminate);
+        });
+    }
+
+    [Fact]
     public void FooterKeepsUploadAvailableWhenRowsStillNeedWork()
     {
         StaTestRunner.Run(() =>
@@ -489,6 +527,141 @@ public class UploadProgressWindowTests
 
             Assert.True(window.ViewModel.ShowUploadButton);
             Assert.False(window.ViewModel.IsOpenResultPrimary);
+        });
+    }
+
+    [Fact]
+    public void OpenSettingsIsHiddenBeforeAndDuringANormalRun()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var gate = new TaskCompletionSource<FileUploadWorkflowResult>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var window = new UploadProgressWindow(Files(@"C:\a.txt"), _ => gate.Task);
+            using var closer = new WindowCloser(window);
+
+            Assert.False(window.ViewModel.ShowOpenSettings);
+
+            var run = window.RunUploadAsync(CancellationToken.None);
+            Assert.False(window.ViewModel.ShowOpenSettings);
+
+            gate.SetResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.Completed, 1));
+            run.GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.ShowOpenSettings);
+        });
+    }
+
+    [Fact]
+    public void OpenSettingsAppearsOnceARunSettlesWithNeedsKeyRows()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.MissingApiKey, 0)));
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.True(window.ViewModel.ShowOpenSettings);
+        });
+    }
+
+    [Fact]
+    public void RetryOnlyResubmitsThePathsThatHaveNotUploadedYet()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var rebuildCalls = new List<IReadOnlyList<string>>();
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt", @"C:\b.txt", @"C:\c.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(
+                    FileUploadWorkflowStatus.CompletedWithFailures,
+                    3,
+                    FailedCount: 1,
+                    ItemResults:
+                    [
+                        Item(@"C:\a.txt", "uploaded", "https://www.virustotal.com/gui/file/a"),
+                        Item(@"C:\b.txt", "failed", error: "quota exceeded"),
+                        Item(@"C:\c.txt", "uploaded", "https://www.virustotal.com/gui/file/c"),
+                    ])),
+                uploadActionFactory: paths =>
+                {
+                    rebuildCalls.Add(paths);
+                    return _ => Task.FromResult(new FileUploadWorkflowResult(
+                        FileUploadWorkflowStatus.Completed,
+                        1,
+                        ItemResults: [Item(@"C:\b.txt", "uploaded", "https://www.virustotal.com/gui/file/b")]));
+                });
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.Equal(["Uploaded", "Failed", "Uploaded"], window.QueueItemStatuses);
+            Assert.Empty(rebuildCalls);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.Equal([new[] { @"C:\b.txt" }], rebuildCalls);
+            Assert.Equal(["Uploaded", "Uploaded", "Uploaded"], window.QueueItemStatuses);
+            Assert.Equal("https://www.virustotal.com/gui/file/a", window.ViewModel.Items[0].ResultUrl);
+            Assert.Equal("https://www.virustotal.com/gui/file/b", window.ViewModel.Items[1].ResultUrl);
+            Assert.Equal("https://www.virustotal.com/gui/file/c", window.ViewModel.Items[2].ResultUrl);
+            Assert.Equal(3, window.ViewModel.UploadedCount);
+        });
+    }
+
+    [Fact]
+    public void CanceledStatusStaysConsistentAcrossAPartialRetry()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt", @"C:\b.txt", @"C:\c.txt", @"C:\d.txt", @"C:\e.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(
+                    FileUploadWorkflowStatus.CompletedWithFailures,
+                    5,
+                    FailedCount: 4,
+                    ItemResults:
+                    [
+                        Item(@"C:\a.txt", "uploaded", "https://www.virustotal.com/gui/file/a"),
+                        Item(@"C:\b.txt", "failed", error: "quota exceeded"),
+                        Item(@"C:\c.txt", "failed", error: "quota exceeded"),
+                        Item(@"C:\d.txt", "failed", error: "quota exceeded"),
+                        Item(@"C:\e.txt", "failed", error: "quota exceeded"),
+                    ])),
+                uploadActionFactory: paths => _ => Task.FromResult(new FileUploadWorkflowResult(
+                    FileUploadWorkflowStatus.Canceled,
+                    paths.Count,
+                    ItemResults: [Item(@"C:\b.txt", "uploaded", "https://www.virustotal.com/gui/file/b")])));
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            Assert.Equal(["Uploaded", "Failed", "Failed", "Failed", "Failed"], window.QueueItemStatuses);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+
+            Assert.Equal(["Uploaded", "Uploaded", "Canceled", "Canceled", "Canceled"], window.QueueItemStatuses);
+            Assert.Equal(2, window.ViewModel.UploadedCount);
+            Assert.Equal("Upload canceled after 2 of 5 item(s) uploaded.", window.StatusText);
+        });
+    }
+
+    [Fact]
+    public void OpenSettingsCommandInvokesTheInjectedAction()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var opened = 0;
+            var window = new UploadProgressWindow(
+                Files(@"C:\a.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(FileUploadWorkflowStatus.MissingApiKey, 0)),
+                openSettings: () => opened++);
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            window.ViewModel.OpenSettingsCommand.Execute(null);
+
+            Assert.Equal(1, opened);
         });
     }
 }

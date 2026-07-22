@@ -12,7 +12,11 @@ public sealed class FolderReviewViewModel : ObservableObject
 
     private readonly Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? _uploadActionFactory;
     private readonly Func<FolderZipUploadRequest, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? _zipUploadActionFactory;
-    private readonly Action<IReadOnlyList<FileSelection>, Func<CancellationToken, Task<FileUploadWorkflowResult>>, bool>? _openUploadProgress;
+    private readonly Action<
+        IReadOnlyList<FileSelection>,
+        Func<CancellationToken, Task<FileUploadWorkflowResult>>,
+        bool,
+        Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>?>? _openUploadProgress;
     private readonly Action? _progressHandoffCompletedAction;
     private readonly int _scanFileLimit;
 
@@ -29,7 +33,11 @@ public sealed class FolderReviewViewModel : ObservableObject
         Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? uploadActionFactory = null,
         Func<FolderZipUploadRequest, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? zipUploadActionFactory = null,
         FolderUploadMode defaultFolderMode = FolderUploadMode.ReviewSelectedFiles,
-        Action<IReadOnlyList<FileSelection>, Func<CancellationToken, Task<FileUploadWorkflowResult>>, bool>? openUploadProgress = null,
+        Action<
+            IReadOnlyList<FileSelection>,
+            Func<CancellationToken, Task<FileUploadWorkflowResult>>,
+            bool,
+            Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>?>? openUploadProgress = null,
         Action? progressHandoffCompletedAction = null,
         Action? cancelAction = null,
         int scanFileLimit = 5000)
@@ -212,7 +220,7 @@ public sealed class FolderReviewViewModel : ObservableObject
         if (_openUploadProgress is not null)
         {
             var selections = paths.Select(path => new FileSelection(path, IsDirectory: false)).ToList();
-            _openUploadProgress(selections, action, true);
+            _openUploadProgress(selections, action, true, _uploadActionFactory);
             ActionStatusText = "Upload opened in progress window.";
             _progressHandoffCompletedAction?.Invoke();
             return Task.CompletedTask;
@@ -239,7 +247,9 @@ public sealed class FolderReviewViewModel : ObservableObject
         var action = _zipUploadActionFactory(new FolderZipUploadRequest(RootPath, paths));
         if (_openUploadProgress is not null)
         {
-            _openUploadProgress([new FileSelection(RootPath, IsDirectory: true)], action, true);
+            // The zip bundles every selected file into one upload; there is no
+            // per-path subset to retry, so no retry factory is offered here.
+            _openUploadProgress([new FileSelection(RootPath, IsDirectory: true)], action, true, null);
             ActionStatusText = "Zip upload opened in progress window.";
             _progressHandoffCompletedAction?.Invoke();
             return Task.CompletedTask;

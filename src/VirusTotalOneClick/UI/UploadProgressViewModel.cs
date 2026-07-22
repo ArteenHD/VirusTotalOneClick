@@ -6,14 +6,17 @@ namespace VirusTotalOneClick.UI;
 public sealed class UploadProgressViewModel : ObservableObject
 {
     private readonly Func<CancellationToken, Task<FileUploadWorkflowResult>>? _uploadAction;
+    private readonly Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? _uploadActionFactory;
     private readonly Action<string>? _openResultUrl;
     private readonly Func<string?, bool> _canOpenResultUrl;
     private readonly Action? _closeAction;
+    private readonly Action? _openSettings;
     private CancellationTokenSource? _managedUploadCts;
     private Task? _managedUploadTask;
     private string _statusText = "Waiting to upload";
     private int _uploadedCount;
     private bool _isUploadRunning;
+    private bool _isIndeterminate;
     private bool _hasRun;
 
     public UploadProgressViewModel(
@@ -22,13 +25,17 @@ public sealed class UploadProgressViewModel : ObservableObject
         bool autoStart = false,
         Action<string>? openResultUrl = null,
         Func<string?, bool>? canOpenResultUrl = null,
-        Action? cancelAction = null)
+        Action? cancelAction = null,
+        Action? openSettings = null,
+        Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? uploadActionFactory = null)
     {
         ArgumentNullException.ThrowIfNull(selections);
         _uploadAction = uploadAction;
+        _uploadActionFactory = uploadActionFactory;
         _openResultUrl = openResultUrl;
         _canOpenResultUrl = canOpenResultUrl ?? (url => !string.IsNullOrWhiteSpace(url));
         _closeAction = cancelAction;
+        _openSettings = openSettings;
         AutoStartsUpload = autoStart;
 
         Items = new ObservableCollection<UploadQueueItem>(
@@ -36,9 +43,10 @@ public sealed class UploadProgressViewModel : ObservableObject
 
         UploadCommand = new AsyncRelayCommand(
             () => StartManagedUploadAsync(CancellationToken.None),
-            () => _uploadAction is not null && !_isUploadRunning);
+            () => (_uploadAction is not null || _uploadActionFactory is not null) && !_isUploadRunning);
         OpenResultCommand = new RelayCommand(OpenFirstResult, CanOpenFirstResult);
         CancelCommand = new RelayCommand(CancelOrClose);
+        OpenSettingsCommand = new RelayCommand(() => _openSettings?.Invoke(), () => _openSettings is not null);
     }
 
     public ObservableCollection<UploadQueueItem> Items { get; }
@@ -48,6 +56,8 @@ public sealed class UploadProgressViewModel : ObservableObject
     public RelayCommand OpenResultCommand { get; }
 
     public RelayCommand CancelCommand { get; }
+
+    public RelayCommand OpenSettingsCommand { get; }
 
     public bool AutoStartsUpload { get; }
 
@@ -145,8 +155,21 @@ public sealed class UploadProgressViewModel : ObservableObject
                 OnPropertyChanged(nameof(CancelButtonText));
                 OnPropertyChanged(nameof(ShowUploadButton));
                 OnPropertyChanged(nameof(IsOpenResultPrimary));
+                OnPropertyChanged(nameof(ShowOpenSettings));
             }
         }
+    }
+
+    /// <summary>
+    /// True for the duration of a run: per-item results only land when the
+    /// action resolves, so a determinate bar would sit dead at 0% the whole
+    /// time. The bar goes indeterminate instead and returns to a determinate
+    /// summary once the run settles.
+    /// </summary>
+    public bool IsIndeterminate
+    {
+        get => _isIndeterminate;
+        private set => SetProperty(ref _isIndeterminate, value);
     }
 
     public bool HasRun
@@ -159,6 +182,7 @@ public sealed class UploadProgressViewModel : ObservableObject
                 OnPropertyChanged(nameof(CancelButtonText));
                 OnPropertyChanged(nameof(ShowUploadButton));
                 OnPropertyChanged(nameof(IsOpenResultPrimary));
+                OnPropertyChanged(nameof(ShowOpenSettings));
             }
         }
     }
@@ -178,6 +202,14 @@ public sealed class UploadProgressViewModel : ObservableObject
     /// </summary>
     public bool IsOpenResultPrimary =>
         _hasRun && !_isUploadRunning && Items.Any(item => item.HasResultUrl);
+
+    /// <summary>
+    /// True once a run has settled with at least one row needing an API key;
+    /// the footer offers a direct path to Settings instead of leaving the
+    /// user to find it on their own.
+    /// </summary>
+    public bool ShowOpenSettings =>
+        _hasRun && !_isUploadRunning && Items.Any(item => item.Status == "Needs API key");
 
     public void OpenFirstResult()
     {
@@ -234,7 +266,22 @@ public sealed class UploadProgressViewModel : ObservableObject
 
     public async Task RunUploadAsync(CancellationToken cancellationToken)
     {
-        if (_uploadAction is null)
+        // A retry recreates the action for only the rows that have not
+        // uploaded yet, so an already-uploaded row is never resubmitted.
+        // The very first run has nothing uploaded yet, so it naturally
+        // covers every row; only a factory-backed retry takes this path,
+        // otherwise the single fixed action (e.g. the zip hand-off) keeps
+        // running exactly as before.
+        var isRetry = _hasRun && _uploadActionFactory is not null;
+        var activeItems = isRetry
+            ? Items.Where(item => item.Status != "Uploaded").ToList()
+            : Items.ToList();
+
+        var action = isRetry
+            ? _uploadActionFactory!(activeItems.Select(item => item.OriginalPath).ToList())
+            : _uploadAction;
+
+        if (action is null)
         {
             StatusText = "No upload action configured.";
             return;
@@ -247,9 +294,9 @@ public sealed class UploadProgressViewModel : ObservableObject
         }
 
         IsUploadRunning = true;
+        IsIndeterminate = true;
         StatusText = "Uploading...";
-        UploadedCount = 0;
-        foreach (var item in Items)
+        foreach (var item in activeItems)
         {
             item.Status = "Waiting";
             item.SubmittedName = null;
@@ -257,13 +304,17 @@ public sealed class UploadProgressViewModel : ObservableObject
             item.ErrorMessage = null;
         }
 
+        UploadedCount = Items.Count(item => item.Status == "Uploaded");
         RaiseOnUiThread(OpenResultCommand.RaiseCanExecuteChanged);
-        Items[0].Status = "Uploading";
+        if (activeItems.Count > 0)
+        {
+            activeItems[0].Status = "Uploading";
+        }
 
         try
         {
-            var result = await _uploadAction(cancellationToken).ConfigureAwait(true);
-            ApplyResult(result);
+            var result = await action(cancellationToken).ConfigureAwait(true);
+            ApplyResult(result, activeItems);
         }
         catch (OperationCanceledException)
         {
@@ -273,7 +324,7 @@ public sealed class UploadProgressViewModel : ObservableObject
         catch (Exception ex)
         {
             StatusText = $"Upload failed: {ex.Message}";
-            foreach (var item in Items)
+            foreach (var item in activeItems)
             {
                 if (item.Status is "Uploading" or "Waiting")
                 {
@@ -285,6 +336,7 @@ public sealed class UploadProgressViewModel : ObservableObject
         finally
         {
             IsUploadRunning = false;
+            IsIndeterminate = false;
             HasRun = true;
             RaiseOnUiThread(UploadCommand.RaiseCanExecuteChanged);
             RaiseOnUiThread(OpenResultCommand.RaiseCanExecuteChanged);
@@ -303,11 +355,11 @@ public sealed class UploadProgressViewModel : ObservableObject
         _closeAction?.Invoke();
     }
 
-    private void ApplyResult(FileUploadWorkflowResult result)
+    private void ApplyResult(FileUploadWorkflowResult result, IReadOnlyList<UploadQueueItem> activeItems)
     {
         if (result.Status == FileUploadWorkflowStatus.MissingApiKey)
         {
-            foreach (var item in Items)
+            foreach (var item in activeItems)
             {
                 item.Status = "Needs API key";
             }
@@ -319,11 +371,11 @@ public sealed class UploadProgressViewModel : ObservableObject
 
         if (result.ItemResults is { Count: > 0 } itemResults)
         {
-            ApplyItemResults(itemResults);
+            ApplyItemResults(itemResults, activeItems);
         }
         else
         {
-            ApplyAggregateStatus(result);
+            ApplyAggregateStatus(result, activeItems);
         }
 
         ReconcileUnresolvedRows(result);
@@ -334,7 +386,7 @@ public sealed class UploadProgressViewModel : ObservableObject
             FileUploadWorkflowStatus.Completed => $"Uploaded {result.ItemCount} item(s).",
             FileUploadWorkflowStatus.CompletedWithFailures =>
                 $"Uploaded {result.ItemCount - result.FailedCount} item(s), {result.FailedCount} failed.",
-            FileUploadWorkflowStatus.Canceled => FormatCanceledStatus(result),
+            FileUploadWorkflowStatus.Canceled => FormatCanceledStatus(),
             FileUploadWorkflowStatus.Failed => $"Upload failed for {result.FailedCount} item(s).",
             FileUploadWorkflowStatus.NoFiles => "No files to upload.",
             _ => "Upload finished.",
@@ -343,29 +395,29 @@ public sealed class UploadProgressViewModel : ObservableObject
         RaiseOnUiThread(OpenResultCommand.RaiseCanExecuteChanged);
     }
 
-    private void ApplyAggregateStatus(FileUploadWorkflowResult result)
+    private void ApplyAggregateStatus(FileUploadWorkflowResult result, IReadOnlyList<UploadQueueItem> activeItems)
     {
         switch (result.Status)
         {
             case FileUploadWorkflowStatus.Completed:
-                foreach (var item in Items)
+                foreach (var item in activeItems)
                 {
                     item.Status = "Uploaded";
                 }
 
                 break;
             case FileUploadWorkflowStatus.Failed:
-                foreach (var item in Items)
+                foreach (var item in activeItems)
                 {
                     item.Status = "Failed";
                 }
 
                 break;
             case FileUploadWorkflowStatus.CompletedWithFailures:
-                var failed = Math.Min(result.FailedCount, Items.Count);
-                for (var i = 0; i < Items.Count; i++)
+                var failed = Math.Min(result.FailedCount, activeItems.Count);
+                for (var i = 0; i < activeItems.Count; i++)
                 {
-                    Items[i].Status = i < Items.Count - failed ? "Uploaded" : "Failed";
+                    activeItems[i].Status = i < activeItems.Count - failed ? "Uploaded" : "Failed";
                 }
 
                 break;
@@ -377,16 +429,18 @@ public sealed class UploadProgressViewModel : ObservableObject
         }
     }
 
-    private void ApplyItemResults(IReadOnlyList<FileUploadWorkflowItemResult> itemResults)
+    private static void ApplyItemResults(
+        IReadOnlyList<FileUploadWorkflowItemResult> itemResults, IReadOnlyList<UploadQueueItem> activeItems)
     {
-        // Rows are matched positionally per path: duplicate selections each
-        // consume their own result instead of colliding on a path-keyed lookup.
-        var pathBuckets = Items
-            .Select((item, index) => (item, index))
-            .GroupBy(pair => pair.item.OriginalPath, StringComparer.OrdinalIgnoreCase)
+        // Rows are matched positionally per path within the active set:
+        // duplicate selections each consume their own result instead of
+        // colliding on a path-keyed lookup, and a row already resolved from
+        // an earlier run (excluded from activeItems) is never touched.
+        var pathBuckets = activeItems
+            .GroupBy(item => item.OriginalPath, StringComparer.OrdinalIgnoreCase)
             .ToDictionary(
                 group => group.Key,
-                group => new Queue<int>(group.Select(pair => pair.index)),
+                group => new Queue<UploadQueueItem>(group),
                 StringComparer.OrdinalIgnoreCase);
 
         foreach (var result in itemResults)
@@ -396,7 +450,7 @@ public sealed class UploadProgressViewModel : ObservableObject
                 continue;
             }
 
-            var item = Items[queue.Dequeue()];
+            var item = queue.Dequeue();
             item.SubmittedName = result.SubmittedName;
             item.ResultUrl = result.ResultUrl;
             item.ErrorMessage = result.ErrorMessage;
@@ -439,11 +493,15 @@ public sealed class UploadProgressViewModel : ObservableObject
         }
     }
 
-    private string FormatCanceledStatus(FileUploadWorkflowResult result)
-    {
-        var totalCount = result.ItemCount > 0 ? result.ItemCount : TotalCount;
-        return $"Upload canceled after {UploadedCount} of {totalCount} item(s) uploaded.";
-    }
+    /// <summary>
+    /// Both numbers here read from the whole queue, matching ProgressSummary:
+    /// result.ItemCount is only the scope of whatever ran this time (every
+    /// row on a first run, but just the retried subset after a partial
+    /// retry), so pairing it with the queue-wide UploadedCount would mix
+    /// scopes and read as inconsistent with the rows actually shown.
+    /// </summary>
+    private string FormatCanceledStatus() =>
+        $"Upload canceled after {UploadedCount} of {TotalCount} item(s) uploaded.";
 
     private bool CanOpenFirstResult() =>
         _openResultUrl is not null && _canOpenResultUrl(GetFirstResultUrl());

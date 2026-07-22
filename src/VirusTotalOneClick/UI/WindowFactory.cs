@@ -37,15 +37,7 @@ public sealed class WindowFactory
 
         return options.Mode switch
         {
-            AppMode.Settings => new SettingsWindow(
-                _composition.Settings,
-                _composition.SaveSettings,
-                _composition.SecretStore,
-                _composition.ClearHistory,
-                _composition.ApplyIntegration,
-                CreateOpenHistoryAction(),
-                _composition.ValidateApiKey,
-                _composition.ApiKeyValidator),
+            AppMode.Settings => CreateSettingsWindow(),
             AppMode.History => CreateHistoryWindow(),
             AppMode.Upload => CreateUploadWindow(options.Paths, isDevMode),
             _ => new SetupWindow(
@@ -57,6 +49,20 @@ public sealed class WindowFactory
                 _composition.ApiKeyValidator),
         };
     }
+
+    private SettingsWindow CreateSettingsWindow()
+        => new(
+            _composition.Settings,
+            _composition.SaveSettings,
+            _composition.SecretStore,
+            _composition.ClearHistory,
+            _composition.ApplyIntegration,
+            CreateOpenHistoryAction(),
+            _composition.ValidateApiKey,
+            _composition.ApiKeyValidator);
+
+    private Action CreateOpenSettingsAction()
+        => () => CreateSettingsWindow().Show();
 
     private HistoryWindow CreateHistoryWindow()
         => new(
@@ -89,7 +95,9 @@ public sealed class WindowFactory
             autoStart: plan.CanUploadImmediately,
             isDevMode: isDevMode,
             openResultUrl: _openResultUrl,
-            canOpenResultUrl: _canOpenResultUrl);
+            canOpenResultUrl: _canOpenResultUrl,
+            openSettings: CreateOpenSettingsAction(),
+            uploadActionFactory: _composition.CreateUploadAction);
     }
 
     private FolderReviewWindow CreateFolderReviewWindow(IReadOnlyList<FileSelection> selections, bool isDevMode)
@@ -105,7 +113,8 @@ public sealed class WindowFactory
         void OpenProgress(
             IReadOnlyList<FileSelection> handedSelections,
             Func<CancellationToken, Task<FileUploadWorkflowResult>> action,
-            bool autoStart)
+            bool autoStart,
+            Func<IReadOnlyList<string>, Func<CancellationToken, Task<FileUploadWorkflowResult>>>? uploadActionFactory)
         {
             var progress = new UploadProgressWindow(
                 handedSelections,
@@ -113,7 +122,9 @@ public sealed class WindowFactory
                 autoStart,
                 isDevMode,
                 _openResultUrl,
-                _canOpenResultUrl);
+                _canOpenResultUrl,
+                openSettings: CreateOpenSettingsAction(),
+                uploadActionFactory: uploadActionFactory);
             progress.Show();
         }
 
