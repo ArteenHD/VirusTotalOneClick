@@ -3,6 +3,7 @@ namespace VirusTotalOneClick.Core;
 public sealed class FileUploadWorkflow
 {
     public const string MissingFileErrorMessage = "File no longer exists.";
+    public const string UnreadableFileErrorMessage = "File could not be read.";
 
     private readonly AppSettings _settings;
     private readonly ISecretStore _secretStore;
@@ -64,13 +65,11 @@ public sealed class FileUploadWorkflow
             ScrubZipInternalPaths: _settings.ScrubZipInternalPaths);
         // Preparing items hashes file contents; keep that work off the calling
         // (dispatcher) thread.
-        var uploadItems = await Task.Run(
+        var (uploadItems, preparationFailures) = await Task.Run(
             () =>
             {
                 OnBackgroundWork?.Invoke();
-                return files
-                    .Select(file => AnonymizerService.PrepareFile(file, anonymizerOptions))
-                    .ToList();
+                return PrepareFiles(files, anonymizerOptions);
             },
             cancellationToken).ConfigureAwait(false);
 
@@ -79,9 +78,10 @@ public sealed class FileUploadWorkflow
             _settings.KeepLocalHistory ? _historyStore : NullUploadHistoryStore.Instance);
         var sessionResult = await session.RunAsync(uploadItems, UploadMode.File, cancellationToken).ConfigureAwait(false);
         var itemResults = ToWorkflowItemResults(sessionResult.ItemResults)
+            .Concat(preparationFailures)
             .Concat(missingFileResults)
             .ToList();
-        var failedCount = sessionResult.FailedCount + missingFileResults.Count;
+        var failedCount = sessionResult.FailedCount + preparationFailures.Count + missingFileResults.Count;
 
         return new FileUploadWorkflowResult(
             ToWorkflowStatus(sessionResult, failedCount),
@@ -120,7 +120,43 @@ public sealed class FileUploadWorkflow
             .ToList();
     }
 
+    private static (List<AnonymizedUploadItem> Items, List<FileUploadWorkflowItemResult> Failures) PrepareFiles(
+        List<string> files,
+        AnonymizerOptions anonymizerOptions)
+    {
+        var items = new List<AnonymizedUploadItem>();
+        var failures = new List<FileUploadWorkflowItemResult>();
+
+        foreach (var file in files)
+        {
+            try
+            {
+                items.Add(AnonymizerService.PrepareFile(file, anonymizerOptions));
+            }
+            catch (FileNotFoundException)
+            {
+                // The file existed a moment ago but vanished before preparation could
+                // hash it; fail just this item instead of aborting the whole batch.
+                failures.Add(CreateMissingFileResult(file));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // The file is still there but is locked or permission-denied; fail just
+                // this item instead of aborting the whole batch.
+                failures.Add(CreateUnreadableFileResult(file));
+            }
+        }
+
+        return (items, failures);
+    }
+
     private static FileUploadWorkflowItemResult CreateMissingFileResult(string originalPath)
+        => CreateFailureResult(originalPath, MissingFileErrorMessage);
+
+    private static FileUploadWorkflowItemResult CreateUnreadableFileResult(string originalPath)
+        => CreateFailureResult(originalPath, UnreadableFileErrorMessage);
+
+    private static FileUploadWorkflowItemResult CreateFailureResult(string originalPath, string errorMessage)
     {
         var submittedName = Path.GetFileName(originalPath);
         if (string.IsNullOrWhiteSpace(submittedName))
@@ -132,6 +168,6 @@ public sealed class FileUploadWorkflow
             originalPath,
             submittedName,
             "failed",
-            ErrorMessage: MissingFileErrorMessage);
+            ErrorMessage: errorMessage);
     }
 }

@@ -174,6 +174,30 @@ public class FileUploadWorkflowTests
     }
 
     [Fact]
+    public async Task ALockedFileDuringPreparationFailsOnlyThatItemWhenScrubbingIsOn()
+    {
+        using var folder = new TemporaryFolder();
+        var first = folder.CreateFile("first.txt", "a");
+        var locked = folder.CreateFile("locked.txt", "b");
+        var third = folder.CreateFile("third.txt", "c");
+        using var client = new FakeVirusTotalClient();
+        var settings = AppSettings.Default with { ScrubSubmittedFilename = true };
+        var (workflow, _) = CreateWorkflow(client, settings);
+
+        using (new FileStream(locked, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            var result = await workflow.RunAsync([first, locked, third], CancellationToken.None);
+
+            Assert.Equal(FileUploadWorkflowStatus.CompletedWithFailures, result.Status);
+            Assert.Equal(3, result.ItemCount);
+            Assert.Equal(1, result.FailedCount);
+            Assert.Equal(2, client.Uploads.Count);
+            var failedItem = Assert.Single(result.ItemResults!, item => item.Status == "failed");
+            Assert.Equal("File could not be read.", failedItem.ErrorMessage);
+        }
+    }
+
+    [Fact]
     public void FilePreparationRunsOffTheCallingThread()
     {
         using var folder = new TemporaryFolder();
