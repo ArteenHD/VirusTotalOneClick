@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using VirusTotalOneClick.Core;
 
 namespace VirusTotalOneClick.UI;
@@ -11,6 +12,7 @@ public sealed class HistoryViewModel : ObservableObject
     private readonly List<HistoryRowViewModel> _allRows;
     private string _searchText = string.Empty;
     private HistoryRowViewModel? _selectedRow;
+    private string _captionText;
 
     public HistoryViewModel(
         IReadOnlyList<UploadHistoryEntry> entries,
@@ -28,7 +30,7 @@ public sealed class HistoryViewModel : ObservableObject
             .Select(entry => new HistoryRowViewModel(entry))
             .ToList();
         VisibleRows = new ObservableCollection<HistoryRowViewModel>(_allRows);
-        CaptionText = keepHistoryEnabled ? "Local history is enabled." : "Local history is disabled.";
+        _captionText = keepHistoryEnabled ? "Local history is enabled." : "Local history is disabled.";
 
         ClearHistoryCommand = new RelayCommand(ClearHistory);
         OpenResultCommand = new RelayCommand(OpenSelectedOrFirstResult, CanOpenSelectedOrFirstResult);
@@ -42,7 +44,11 @@ public sealed class HistoryViewModel : ObservableObject
 
     public bool HasClearHistoryAction => _clearHistory is not null;
 
-    public string CaptionText { get; }
+    public string CaptionText
+    {
+        get => _captionText;
+        private set => SetProperty(ref _captionText, value);
+    }
 
     public string SearchText
     {
@@ -80,7 +86,16 @@ public sealed class HistoryViewModel : ObservableObject
 
     public void ClearHistory()
     {
-        _clearHistory?.Invoke();
+        try
+        {
+            _clearHistory?.Invoke();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            CaptionText = $"Could not clear history: {ex.GetBaseException().Message}";
+            return;
+        }
+
         _allRows.Clear();
         VisibleRows.Clear();
         SelectedRow = null;

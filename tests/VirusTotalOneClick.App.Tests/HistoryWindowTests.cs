@@ -171,6 +171,24 @@ public class HistoryWindowTests
     }
 
     [Fact]
+    public void ClearHistoryWithALockedFileReportsFailureWithoutThrowing()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new HistoryWindow(
+                [Entry(@"C:\a.txt", DateTimeOffset.UtcNow)],
+                clearHistory: () => throw new IOException("history.jsonl is in use by another process"));
+            using var closer = new WindowCloser(window);
+
+            var exception = Record.Exception(() => window.ClearHistory());
+
+            Assert.Null(exception);
+            Assert.Equal(1, window.EntryCount);
+            Assert.StartsWith("Could not clear history", window.ViewModel.CaptionText, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
     public void SearchAfterClearDoesNotResurrectClearedRows()
     {
         StaTestRunner.Run(() =>

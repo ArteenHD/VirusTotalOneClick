@@ -8,6 +8,8 @@ internal sealed class FakeSecretStore : ISecretStore
 
     public bool ThrowOnSave { get; set; }
 
+    public bool ThrowOnDelete { get; set; }
+
     public void SaveApiKey(string apiKey)
     {
         if (ThrowOnSave)
@@ -20,5 +22,13 @@ internal sealed class FakeSecretStore : ISecretStore
 
     public string? ReadApiKey() => _apiKey;
 
-    public void DeleteApiKey() => _apiKey = null;
+    public void DeleteApiKey()
+    {
+        if (ThrowOnDelete)
+        {
+            throw new IOException("apikey.bin is in use by another process");
+        }
+
+        _apiKey = null;
+    }
 }

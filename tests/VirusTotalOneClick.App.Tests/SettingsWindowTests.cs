@@ -362,6 +362,78 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void ClearWithALockedKeyFileReportsFailureWithoutThrowing()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore { ThrowOnDelete = true };
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(AppSettings.Default, secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            var exception = Record.Exception(() => window.ViewModel.ClearApiKey());
+
+            Assert.Null(exception);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.True(window.ViewModel.HasSavedApiKey);
+            Assert.StartsWith("Could not clear API key", window.ApiKeyStatusText, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void ClearHistoryWithALockedFileReportsFailureWithoutThrowing()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                clearHistory: () => throw new IOException("history.jsonl is in use by another process"));
+            using var closer = new WindowCloser(window);
+
+            var exception = Record.Exception(() => window.ClearHistory());
+
+            Assert.Null(exception);
+            Assert.StartsWith("Could not clear history", window.ViewModel.HistoryStatusText, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public void ClearApiKeyIsUnavailableWhileASaveIsInFlight()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var validationStarted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            // Left as ordinary (synchronous-continuation) task completion sources:
+            // resolving them below must run the rest of the save inline on this
+            // thread, the same way it would inline onto the UI thread in the
+            // running app, so the running-state transition is observable here
+            // without a live dispatcher message loop.
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: new FakeSecretStore(),
+                validateApiKey: (_, _) =>
+                {
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            Assert.True(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+
+            window.ViewModel.SaveApiKeyCommand.Execute(null);
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+
+            Assert.True(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+        });
+    }
+
+    [Fact]
     public void KeepLocalHistoryTogglesTheLiveStatusBeforeSaving()
     {
         StaTestRunner.Run(() =>

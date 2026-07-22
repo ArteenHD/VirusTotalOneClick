@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using VirusTotalOneClick.Core;
 
 namespace VirusTotalOneClick.UI;
@@ -78,9 +79,15 @@ public sealed class SettingsViewModel : ObservableObject
         SaveApiKeyCommand = new AsyncRelayCommand(
             () => SaveApiKeyAsync(CancellationToken.None),
             onError: ex => ApiKeyStatusText = $"Could not save API key: {ex.GetBaseException().Message}");
-        ClearApiKeyCommand = new RelayCommand(ClearApiKey);
+        ClearApiKeyCommand = new RelayCommand(ClearApiKey, () => !SaveApiKeyCommand.IsRunning);
         ClearHistoryCommand = new RelayCommand(ClearHistory);
         OpenHistoryCommand = new RelayCommand(OpenHistory, () => _openHistory is not null);
+
+        // A key save runs a 30-second live probe; clearing the key mid-probe
+        // must not let that probe's own save land afterward and silently
+        // restore what was just cleared, so Clear is disabled for the probe's
+        // duration.
+        SaveApiKeyCommand.CanExecuteChanged += (_, _) => ClearApiKeyCommand.RaiseCanExecuteChanged();
     }
 
     public RelayCommand SaveSettingsCommand { get; }
@@ -286,7 +293,16 @@ public sealed class SettingsViewModel : ObservableObject
 
     public void ClearApiKey()
     {
-        _secretStore?.DeleteApiKey();
+        try
+        {
+            _secretStore?.DeleteApiKey();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ApiKeyStatusText = $"Could not clear API key: {ex.GetBaseException().Message}";
+            return;
+        }
+
         ApiKeyText = string.Empty;
         HasSavedApiKey = false;
         ApiKeyStatusText = "API key cleared.";
@@ -294,7 +310,16 @@ public sealed class SettingsViewModel : ObservableObject
 
     public void ClearHistory()
     {
-        _clearHistory?.Invoke();
+        try
+        {
+            _clearHistory?.Invoke();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            HistoryStatusText = $"Could not clear history: {ex.GetBaseException().Message}";
+            return;
+        }
+
         HistoryStatusText = "Local history cleared.";
     }
 
