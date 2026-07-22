@@ -76,6 +76,23 @@ public class UploadHistoryStoreTests
     }
 
     [Fact]
+    public void AppendStartsANewLineWhenTheFileDoesNotEndWithOne()
+    {
+        using var folder = new TemporaryFolder();
+        var path = Path.Combine(folder.Path, "history.jsonl");
+        var kept = JsonSerializer.Serialize(Entry("kept"));
+        File.WriteAllText(path, kept + Environment.NewLine + "{ this line was torn mid-write");
+        var store = new UploadHistoryStore(path);
+
+        store.Append(Entry("new"));
+
+        var entries = store.ReadAll();
+        Assert.Equal(2, entries.Count);
+        Assert.Contains(entries, entry => entry.SubmittedName == "kept.bin");
+        Assert.Contains(entries, entry => entry.SubmittedName == "new.bin");
+    }
+
+    [Fact]
     public void BlankLinesAreIgnored()
     {
         using var folder = new TemporaryFolder();
@@ -111,11 +128,15 @@ public class UploadHistoryStoreTests
         var store = new UploadHistoryStore(path);
         store.Append(Entry("first"));
 
+        // Released well within the first retry interval: comfortably long enough
+        // for the append's first attempt to observe the lock and fail, but far
+        // short of the retry budget (4 retries * 50ms), leaving a wide margin
+        // before the attempts that must not still find the file locked.
         Task appendTask;
         using (var exclusiveLock = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
             appendTask = Task.Run(() => store.Append(Entry("second")));
-            Thread.Sleep(120);
+            Thread.Sleep(30);
         }
 
         Assert.True(appendTask.Wait(TimeSpan.FromSeconds(5)));
@@ -134,6 +155,40 @@ public class UploadHistoryStoreTests
         var exception = Record.Exception(() => store.Append(Entry("blocked")));
 
         Assert.IsAssignableFrom<IOException>(exception);
+    }
+
+    [Fact]
+    public void ReadAllSucceedsWhileAnotherWriterHoldsTheFileOpenForAppending()
+    {
+        using var folder = new TemporaryFolder();
+        var path = Path.Combine(folder.Path, "history.jsonl");
+        var store = new UploadHistoryStore(path);
+        store.Append(Entry("first"));
+
+        // Mirrors the share mode File.AppendAllText itself opens with while writing.
+        using var appenderHandle = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.Read);
+
+        Assert.Single(store.ReadAll());
+    }
+
+    [Fact]
+    public void ClearSucceedsAfterATransientLockIsReleased()
+    {
+        using var folder = new TemporaryFolder();
+        var path = Path.Combine(folder.Path, "history.jsonl");
+        var store = new UploadHistoryStore(path);
+        store.Append(Entry("first"));
+
+        var exclusiveLock = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        _ = Task.Run(() =>
+        {
+            Thread.Sleep(120);
+            exclusiveLock.Dispose();
+        });
+
+        store.Clear();
+
+        Assert.False(File.Exists(path));
     }
 
     [Fact]

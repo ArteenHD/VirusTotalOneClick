@@ -20,19 +20,36 @@ public sealed class UploadHistoryStore : IUploadHistoryStore
         var line = JsonSerializer.Serialize(entry) + Environment.NewLine;
 
         // Appends open the file exclusively; another process appending at the same
-        // time raises a sharing IOException, so retry briefly before giving up.
-        for (var attempt = 1; ; attempt++)
+        // time raises a sharing IOException, so retry briefly before giving up. The
+        // check for a missing trailing newline shares the same retry: a crash
+        // mid-append can leave a partial line, and gluing the new record onto that
+        // torn tail would lose both lines when readers skip the malformed one.
+        RetryOnSharingViolation(() =>
         {
-            try
+            if (FileEndsWithoutNewline())
             {
-                File.AppendAllText(_path, line);
-                return;
+                File.AppendAllText(_path, Environment.NewLine);
             }
-            catch (IOException) when (attempt < AppendAttempts)
-            {
-                Thread.Sleep(AppendRetryDelay);
-            }
+
+            File.AppendAllText(_path, line);
+        });
+    }
+
+    private bool FileEndsWithoutNewline()
+    {
+        if (!File.Exists(_path))
+        {
+            return false;
         }
+
+        using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        if (stream.Length == 0)
+        {
+            return false;
+        }
+
+        stream.Seek(-1, SeekOrigin.End);
+        return stream.ReadByte() != '\n';
     }
 
     public IReadOnlyList<UploadHistoryEntry> ReadAll()
@@ -43,7 +60,13 @@ public sealed class UploadHistoryStore : IUploadHistoryStore
         }
 
         var entries = new List<UploadHistoryEntry>();
-        foreach (var line in File.ReadLines(_path))
+
+        // File.ReadLines opens for FileShare.Read only, which conflicts with a
+        // concurrent appender's write handle; ask for ReadWrite so reads never
+        // contend with appends in progress.
+        using var stream = new FileStream(_path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        while (reader.ReadLine() is { } line)
         {
             if (string.IsNullOrWhiteSpace(line))
             {
@@ -70,9 +93,29 @@ public sealed class UploadHistoryStore : IUploadHistoryStore
 
     public void Clear()
     {
-        if (File.Exists(_path))
+        if (!File.Exists(_path))
         {
-            File.Delete(_path);
+            return;
+        }
+
+        // A concurrent appender can hold the file exclusively for the same brief
+        // window Append tolerates, so retry the same way.
+        RetryOnSharingViolation(() => File.Delete(_path));
+    }
+
+    private static void RetryOnSharingViolation(Action action)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            try
+            {
+                action();
+                return;
+            }
+            catch (IOException) when (attempt < AppendAttempts)
+            {
+                Thread.Sleep(AppendRetryDelay);
+            }
         }
     }
 }
