@@ -9,6 +9,14 @@ public sealed class AppSettingsStore
         WriteIndented = true,
     };
 
+    // A file that exists but can't be read or parsed is not a fresh install; the
+    // user's consent state is unknown, so confirm before uploading rather than
+    // silently falling back to the auto-upload default.
+    private static readonly AppSettings UnreadableFileDefaults = AppSettings.Default with
+    {
+        ConfirmBeforeFileUpload = true,
+    };
+
     private readonly string _path;
 
     public AppSettingsStore(string path)
@@ -26,17 +34,19 @@ public sealed class AppSettingsStore
         try
         {
             var json = File.ReadAllText(_path);
-            return JsonSerializer.Deserialize<AppSettings>(json) ?? AppSettings.Default;
+            return JsonSerializer.Deserialize<AppSettings>(json) ?? UnreadableFileDefaults;
         }
-        catch (JsonException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return AppSettings.Default;
+            return UnreadableFileDefaults;
         }
     }
 
     public void Save(AppSettings settings)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
-        File.WriteAllText(_path, JsonSerializer.Serialize(settings, WriteOptions));
+        var tempPath = _path + ".tmp";
+        File.WriteAllText(tempPath, JsonSerializer.Serialize(settings, WriteOptions));
+        File.Move(tempPath, _path, overwrite: true);
     }
 }

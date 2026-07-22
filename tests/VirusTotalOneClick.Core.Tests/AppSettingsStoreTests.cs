@@ -54,21 +54,39 @@ public class AppSettingsStoreTests
     }
 
     [Fact]
-    public void LoadReturnsDefaultsWhenFileIsCorrupt()
+    public void LoadFallsBackToConfirmFirstWhenFileIsCorrupt()
     {
         using var folder = new TemporaryFolder();
         var path = folder.CreateFile("settings.json", "{ not valid json ]");
 
-        Assert.Equal(AppSettings.Default, new AppSettingsStore(path).Load());
+        var loaded = new AppSettingsStore(path).Load();
+
+        Assert.Equal(AppSettings.Default with { ConfirmBeforeFileUpload = true }, loaded);
     }
 
     [Fact]
-    public void LoadReturnsDefaultsWhenFileContainsJsonNull()
+    public void LoadFallsBackToConfirmFirstWhenFileContainsJsonNull()
     {
         using var folder = new TemporaryFolder();
         var path = folder.CreateFile("settings.json", "null");
 
-        Assert.Equal(AppSettings.Default, new AppSettingsStore(path).Load());
+        var loaded = new AppSettingsStore(path).Load();
+
+        Assert.Equal(AppSettings.Default with { ConfirmBeforeFileUpload = true }, loaded);
+    }
+
+    [Fact]
+    public void LoadFallsBackToConfirmFirstWhenFileIsLocked()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("settings.json", "{}");
+        using var exclusiveLock = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+        AppSettings? loaded = null;
+
+        var exception = Record.Exception(() => loaded = new AppSettingsStore(path).Load());
+
+        Assert.Null(exception);
+        Assert.Equal(AppSettings.Default with { ConfirmBeforeFileUpload = true }, loaded);
     }
 
     [Fact]
@@ -119,6 +137,20 @@ public class AppSettingsStoreTests
 
         Assert.Equal(AppSettings.Default, store.Load());
         Assert.DoesNotContain("xxxx", File.ReadAllText(path), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void SaveWritesViaATemporaryFileAndLeavesNoneBehind()
+    {
+        using var folder = new TemporaryFolder();
+        var path = Path.Combine(folder.Path, "settings.json");
+        var store = new AppSettingsStore(path);
+        var settings = AppSettings.Default with { ConfirmBeforeFileUpload = true };
+
+        store.Save(settings);
+
+        Assert.Equal(settings, store.Load());
+        Assert.False(File.Exists(path + ".tmp"));
     }
 
     [Fact]
