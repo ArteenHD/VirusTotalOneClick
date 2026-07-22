@@ -22,6 +22,7 @@ public partial class SettingsWindow : AppWindow
             settings, saveSettings, secretStore, clearHistory, applyIntegration, openHistory, validateApiKey, apiKeyValidator);
         DataContext = _viewModel;
         InitializeComponent();
+        Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
     }
 

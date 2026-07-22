@@ -20,7 +20,9 @@ public partial class SetupWindow : AppWindow
             settings, saveSettings, secretStore, applyIntegration, validateApiKey, apiKeyValidator);
         DataContext = _viewModel;
         InitializeComponent();
+        Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Loaded += OnLoaded;
     }
 
     public IReadOnlyList<string> SectionNames { get; } = SetupViewModel.Sections;
@@ -89,4 +91,6 @@ public partial class SetupWindow : AppWindow
 
         _viewModel.SaveSetupCommand.Execute(null);
     }
+
+    private void OnLoaded(object sender, RoutedEventArgs e) => ApiKeyPasswordBox.Focus();
 }

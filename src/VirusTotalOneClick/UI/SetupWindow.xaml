@@ -6,7 +6,9 @@
     xmlns:local="clr-namespace:VirusTotalOneClick.UI"
     Width="720"
     Height="780"
-    ResizeMode="NoResize">
+    MinWidth="600"
+    MinHeight="480"
+    ResizeMode="CanResize">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -158,8 +160,10 @@
                     VerticalAlignment="Center"
                     Text="{Binding SetupStatusText}" />
                 <ui:Button
+                    x:Name="SaveOrCloseButton"
                     Grid.Column="1"
                     Appearance="Primary"
+                    IsDefault="True"
                     Click="SaveOrCloseButton_Click">
                     <ui:Button.Style>
                         <Style TargetType="{x:Type ui:Button}" BasedOn="{StaticResource {x:Type ui:Button}}">

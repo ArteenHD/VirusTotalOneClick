@@ -6,7 +6,9 @@
     xmlns:local="clr-namespace:VirusTotalOneClick.UI"
     Width="920"
     Height="830"
-    ResizeMode="NoResize">
+    MinWidth="760"
+    MinHeight="480"
+    ResizeMode="CanResize">
     <local:AppWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
     </local:AppWindow.Resources>
@@ -201,8 +203,10 @@
                     VerticalAlignment="Center"
                     Text="{Binding SettingsStatusText}" />
                 <ui:Button
+                    x:Name="SaveSettingsButton"
                     Grid.Column="1"
                     Appearance="Primary"
+                    IsDefault="True"
                     Content="Save settings"
                     Command="{Binding SaveSettingsCommand}" />
             </Grid>

@@ -1,3 +1,4 @@
+using System.Windows;
 using VirusTotalOneClick.Core;
 using VirusTotalOneClick.UI;
 
@@ -6,6 +7,74 @@ namespace VirusTotalOneClick.AppTests;
 public class SetupWindowTests
 {
     private static readonly string ValidKey = new('b', 64);
+
+    [Fact]
+    public void TheWindowCanBeResizedWithASensibleMinimumSize()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SetupWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(ResizeMode.CanResize, window.ResizeMode);
+            Assert.True(window.MinWidth > 0);
+            Assert.True(window.MinHeight > 0);
+        });
+    }
+
+    [Fact]
+    public void AWorkAreaShorterThanTheDesignHeightClampsStartupHeightWithAMargin()
+    {
+        Assert.Equal(676d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 700, minHeight: 480));
+        Assert.Equal(780d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 2000, minHeight: 480));
+        Assert.Equal(780d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 0, minHeight: 480));
+    }
+
+    [Fact]
+    public void TheClampNeverUndercutsTheWindowsMinimumHeight()
+    {
+        Assert.Equal(480d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 490, minHeight: 480));
+    }
+
+    [Fact]
+    public void TheWindowHeightIsWiredToTheWorkAreaClamp()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SetupWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(
+                AppWindow.ClampHeightToWorkArea(780, SystemParameters.WorkArea.Height, window.MinHeight),
+                window.Height);
+        });
+    }
+
+    [Fact]
+    public void TheSaveOrCloseButtonIsTheDefaultButton()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SetupWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.True(window.SaveOrCloseButton.IsDefault);
+        });
+    }
+
+    [Fact]
+    public void InitialKeyboardFocusIsOnTheApiKeyBox()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SetupWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            window.Show();
+
+            Assert.True(window.ApiKeyPasswordBox.IsKeyboardFocusWithin);
+        });
+    }
 
     [Fact]
     public void ConstructsWithTheFixedSectionOrder()

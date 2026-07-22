@@ -1,3 +1,4 @@
+using System.Windows;
 using VirusTotalOneClick.Core;
 using VirusTotalOneClick.UI;
 
@@ -6,6 +7,46 @@ namespace VirusTotalOneClick.AppTests;
 public class SettingsWindowTests
 {
     private static readonly string ValidKey = new('c', 64);
+
+    [Fact]
+    public void TheWindowCanBeResizedWithASensibleMinimumSize()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(ResizeMode.CanResize, window.ResizeMode);
+            Assert.True(window.MinWidth > 0);
+            Assert.True(window.MinHeight > 0);
+        });
+    }
+
+    [Fact]
+    public void TheWindowHeightIsWiredToTheWorkAreaClamp()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(
+                AppWindow.ClampHeightToWorkArea(830, SystemParameters.WorkArea.Height, window.MinHeight),
+                window.Height);
+        });
+    }
+
+    [Fact]
+    public void TheSaveSettingsButtonIsTheDefaultButton()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            Assert.True(window.SaveSettingsButton.IsDefault);
+        });
+    }
 
     [Fact]
     public void ConstructsWithTheFixedSectionOrder()
