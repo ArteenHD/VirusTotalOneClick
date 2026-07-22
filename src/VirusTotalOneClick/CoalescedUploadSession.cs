@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using VirusTotalOneClick.Core;
 
 namespace VirusTotalOneClick;
@@ -85,8 +86,9 @@ public sealed class CoalescedUploadSession : IDisposable
                 {
                     openBatch(batch);
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
+                    Trace.TraceError("Batch delivery failed: {0}", ex);
                 }
             }
         }

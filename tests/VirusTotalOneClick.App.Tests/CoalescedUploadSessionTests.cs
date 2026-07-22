@@ -2,6 +2,17 @@ namespace VirusTotalOneClick.AppTests;
 
 public class CoalescedUploadSessionTests
 {
+    private sealed class CollectingTraceListener : System.Diagnostics.TraceListener
+    {
+        public List<string> Messages { get; } = [];
+
+        public override void Write(string? message)
+        {
+        }
+
+        public override void WriteLine(string? message) => Messages.Add(message ?? string.Empty);
+    }
+
     private static string UniqueName() => "VirusTotalOneClick.Test." + Guid.NewGuid().ToString("N");
 
     private static async Task<IReadOnlyList<string>> AwaitBatch(
@@ -108,23 +119,36 @@ public class CoalescedUploadSessionTests
         var deliveryCount = 0;
         var firstAttempted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var secondBatch = new TaskCompletionSource<IReadOnlyList<string>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        primary.SeedAndPump([@"C:\first.txt"], batch =>
+        var listener = new CollectingTraceListener();
+        System.Diagnostics.Trace.Listeners.Add(listener);
+        try
         {
-            if (Interlocked.Increment(ref deliveryCount) == 1)
+            primary.SeedAndPump([@"C:\first.txt"], batch =>
             {
-                firstAttempted.TrySetResult();
-                throw new InvalidOperationException("Simulated failure delivering the first batch.");
-            }
+                if (Interlocked.Increment(ref deliveryCount) == 1)
+                {
+                    firstAttempted.TrySetResult();
+                    throw new InvalidOperationException("Simulated failure delivering the first batch.");
+                }
 
-            secondBatch.TrySetResult(batch);
-        });
+                secondBatch.TrySetResult(batch);
+            });
 
-        var attemptWinner = await Task.WhenAny(firstAttempted.Task, Task.Delay(TimeSpan.FromSeconds(10)));
-        Assert.True(ReferenceEquals(attemptWinner, firstAttempted.Task), "Timed out waiting for the first delivery attempt.");
+            var attemptWinner = await Task.WhenAny(firstAttempted.Task, Task.Delay(TimeSpan.FromSeconds(10)));
+            Assert.True(ReferenceEquals(attemptWinner, firstAttempted.Task), "Timed out waiting for the first delivery attempt.");
 
-        using var secondary = new CoalescedUploadSession(name);
-        Assert.True(await secondary.TryForwardAsync([@"C:\second.txt"], CancellationToken.None));
+            using var secondary = new CoalescedUploadSession(name);
+            Assert.True(await secondary.TryForwardAsync([@"C:\second.txt"], CancellationToken.None));
 
-        Assert.Equal([@"C:\second.txt"], await AwaitBatch(secondBatch, TimeSpan.FromSeconds(10)));
+            Assert.Equal([@"C:\second.txt"], await AwaitBatch(secondBatch, TimeSpan.FromSeconds(10)));
+
+            Assert.Contains(
+                listener.Messages,
+                message => message.Contains("Simulated failure delivering the first batch.", StringComparison.Ordinal));
+        }
+        finally
+        {
+            System.Diagnostics.Trace.Listeners.Remove(listener);
+        }
     }
 }
