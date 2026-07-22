@@ -38,9 +38,18 @@ public sealed class DpapiFileSecretStore : ISecretStore
             var bytes = ProtectedData.Unprotect(protectedBytes, optionalEntropy: null, DataProtectionScope.CurrentUser);
             return Encoding.UTF8.GetString(bytes);
         }
-        catch (Exception ex) when (IsRecoverableReadFailure(ex))
+        catch (CryptographicException)
         {
+            // The blob is genuinely undecryptable (corrupt, or protected under a
+            // different Windows profile), so there is no key to recover.
             TryRemoveUnreadableBlob();
+            return null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A transient I/O failure (e.g. the file is locked by a scanner or
+            // backup tool) is not evidence of corruption, so the stored key is
+            // left untouched for the next read attempt.
             return null;
         }
     }
@@ -53,11 +62,6 @@ public sealed class DpapiFileSecretStore : ISecretStore
         }
     }
 
-    private static bool IsRecoverableReadFailure(Exception ex) =>
-        ex is IOException
-            or UnauthorizedAccessException
-            or CryptographicException;
-
     private void TryRemoveUnreadableBlob()
     {
         try
@@ -67,7 +71,7 @@ public sealed class DpapiFileSecretStore : ISecretStore
                 File.Delete(_path);
             }
         }
-        catch (Exception ex) when (IsRecoverableReadFailure(ex))
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
         }
     }

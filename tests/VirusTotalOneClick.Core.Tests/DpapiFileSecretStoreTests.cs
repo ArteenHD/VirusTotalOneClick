@@ -57,6 +57,28 @@ public class DpapiFileSecretStoreTests
     }
 
     [Fact]
+    public void LockedBlobReadsAsNullAndTheFileIsPreserved()
+    {
+        using var folder = new TemporaryFolder();
+        var store = new DpapiFileSecretStore(folder.Path);
+        store.SaveApiKey("locked-key");
+        var blobPath = Path.Combine(folder.Path, "apikey.bin");
+        var originalBytes = File.ReadAllBytes(blobPath);
+
+        // FileShare.Delete: blocks the read (transient lock, e.g. a scanner holding
+        // the file open) while still permitting a delete, so this reproduces the
+        // failure mode without masking it behind a delete that would fail anyway.
+        using (new FileStream(blobPath, FileMode.Open, FileAccess.Read, FileShare.Delete))
+        {
+            Assert.Null(store.ReadApiKey());
+        }
+
+        Assert.True(File.Exists(blobPath));
+        Assert.Equal(originalBytes, File.ReadAllBytes(blobPath));
+        Assert.Equal("locked-key", store.ReadApiKey());
+    }
+
+    [Fact]
     public void DeleteIsANoOpWhenNothingIsStored()
     {
         using var folder = new TemporaryFolder();
