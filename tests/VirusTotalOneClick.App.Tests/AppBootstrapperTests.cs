@@ -1,3 +1,5 @@
+using System.Net.Http;
+using System.Reflection;
 using VirusTotalOneClick.Core;
 
 namespace VirusTotalOneClick.AppTests;
@@ -125,6 +127,19 @@ public class AppBootstrapperTests
     {
         Assert.Equal(Timeout.InfiniteTimeSpan, AppBootstrapper.UploadHttpClient.Timeout);
         Assert.Equal(ApiBase, AppBootstrapper.UploadHttpClient.BaseAddress);
+    }
+
+    [Fact]
+    public void TheUploadClientNeverFollowsRedirects()
+    {
+        Assert.False(AppBootstrapper.UploadHttpHandler.AllowAutoRedirect);
+        Assert.Same(AppBootstrapper.UploadHttpHandler, GetWiredHandler(AppBootstrapper.UploadHttpClient));
+    }
+
+    private static HttpMessageHandler GetWiredHandler(HttpClient client)
+    {
+        var field = typeof(HttpMessageInvoker).GetField("_handler", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        return (HttpMessageHandler)field.GetValue(client)!;
     }
 
     [Fact]

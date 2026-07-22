@@ -83,8 +83,35 @@ public sealed class VirusTotalClient : IVirusTotalClient
 
         var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         var uploadUrl = ReadStringData(json);
-        return new Uri(uploadUrl, UriKind.Absolute);
+        return ValidateUploadUri(uploadUrl);
     }
+
+    private static Uri ValidateUploadUri(string uploadUrl)
+    {
+        if (!Uri.TryCreate(uploadUrl, UriKind.Absolute, out var uri) ||
+            !(string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) ||
+              string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new VirusTotalApiException("VirusTotal returned an upload URL that is not a valid http(s) address.", statusCode: 0);
+        }
+
+        if (!string.IsNullOrEmpty(uri.UserInfo) || !uri.IsDefaultPort || !IsTrustedVirusTotalHost(uri.Host))
+        {
+            throw new VirusTotalApiException(
+                "VirusTotal returned an upload URL outside the virustotal.com domain.", statusCode: 0);
+        }
+
+        if (string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase))
+        {
+            return new UriBuilder(uri) { Scheme = Uri.UriSchemeHttps, Port = -1 }.Uri;
+        }
+
+        return uri;
+    }
+
+    private static bool IsTrustedVirusTotalHost(string host) =>
+        host.Equals("virustotal.com", StringComparison.OrdinalIgnoreCase) ||
+        host.EndsWith(".virustotal.com", StringComparison.OrdinalIgnoreCase);
 
     private static MultipartFormDataContent CreateMultipartContent(string filePath, string submittedName)
     {

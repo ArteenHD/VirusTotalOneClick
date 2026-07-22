@@ -14,10 +14,18 @@ public static class AppBootstrapper
 
     private static readonly Uri VirusTotalBaseUri = new("https://www.virustotal.com/api/v3/");
 
+    // Redirects are never expected from the upload endpoints, and following one
+    // would carry the x-apikey header and file content to whatever location a
+    // 3xx response names; a redirect should surface as a request failure instead.
+    internal static readonly SocketsHttpHandler UploadHttpHandler = new()
+    {
+        AllowAutoRedirect = false,
+    };
+
     // Uploads run up to the 650 MB service ceiling, so the shared client must not
     // enforce the default 100-second timeout; cancellation comes solely from the
     // per-upload CancellationToken.
-    internal static readonly HttpClient UploadHttpClient = new()
+    internal static readonly HttpClient UploadHttpClient = new(UploadHttpHandler)
     {
         BaseAddress = VirusTotalBaseUri,
         Timeout = Timeout.InfiniteTimeSpan,

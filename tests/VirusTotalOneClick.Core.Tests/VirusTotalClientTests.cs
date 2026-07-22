@@ -76,6 +76,137 @@ public class VirusTotalClientTests
     }
 
     [Fact]
+    public async Task HttpUploadUrlOnTheVirusTotalDomainIsNormalizedToHttps()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"http://www.virustotal.com/upload-session"}""")
+            : Json(HttpStatusCode.OK, """{"data":{"id":"large-analysis"}}"""));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await client.UploadFileAsync(path, "submitted.bin", CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("https://www.virustotal.com/upload-session", handler.Requests[1].RequestUri!.ToString());
+        Assert.Equal("test-api-key", Assert.Single(handler.Requests[1].Headers.GetValues("x-apikey")));
+    }
+
+    [Theory]
+    [InlineData("https://evil.com/upload")]
+    [InlineData("https://evilvirustotal.com/x")]
+    [InlineData("https://virustotal.com.evil.com/x")]
+    public async Task UploadUrlOutsideTheVirusTotalDomainIsRejectedBeforeAnyKeyLeavesTheClient(string maliciousUploadUrl)
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, $$"""{"data":"{{maliciousUploadUrl}}"}""")
+            : throw new InvalidOperationException("The upload must never reach an untrusted host."));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await Assert.ThrowsAsync<VirusTotalApiException>(
+            () => client.UploadFileAsync(path, "submitted.bin", CancellationToken.None));
+
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("https://www.virustotal.com/api/v3/files/upload_url", request.RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task UploadUrlWithUserInfoIsRejected()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"https://user@www.virustotal.com/x"}""")
+            : throw new InvalidOperationException("The upload must never be posted."));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await Assert.ThrowsAsync<VirusTotalApiException>(
+            () => client.UploadFileAsync(path, "submitted.bin", CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task UploadUrlWithANonDefaultPortIsRejected()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"https://www.virustotal.com:8443/x"}""")
+            : throw new InvalidOperationException("The upload must never be posted."));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await Assert.ThrowsAsync<VirusTotalApiException>(
+            () => client.UploadFileAsync(path, "submitted.bin", CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task UploadUrlOnASubdomainOfVirusTotalIsAccepted()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"https://uploads.virustotal.com/x"}""")
+            : Json(HttpStatusCode.OK, """{"data":{"id":"large-analysis"}}"""));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await client.UploadFileAsync(path, "submitted.bin", CancellationToken.None);
+
+        Assert.Equal(2, handler.Requests.Count);
+        Assert.Equal("https://uploads.virustotal.com/x", handler.Requests[1].RequestUri!.ToString());
+    }
+
+    [Fact]
+    public async Task UploadUrlWithANonHttpSchemeIsRejected()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"ftp://www.virustotal.com/x"}""")
+            : throw new InvalidOperationException("The upload must never be posted."));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await Assert.ThrowsAsync<VirusTotalApiException>(
+            () => client.UploadFileAsync(path, "submitted.bin", CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
+    public async Task MalformedUploadUrlIsRejectedAsAnApiException()
+    {
+        using var folder = new TemporaryFolder();
+        var path = folder.CreateFile("big.bin", "0123456789");
+        var handler = new RecordingHttpHandler((_, index) => index == 0
+            ? Json(HttpStatusCode.OK, """{"data":"not-a-url"}""")
+            : throw new InvalidOperationException("The upload must never be posted."));
+        using var httpClient = new HttpClient(handler);
+        var options = new VirusTotalOptions("test-api-key", BaseUri) with { SmallFileUploadLimitBytes = 4 };
+        var client = new VirusTotalClient(httpClient, options);
+
+        await Assert.ThrowsAsync<VirusTotalApiException>(
+            () => client.UploadFileAsync(path, "submitted.bin", CancellationToken.None));
+
+        Assert.Single(handler.Requests);
+    }
+
+    [Fact]
     public async Task OversizedFileThrowsBeforeAnyHttpRequest()
     {
         using var folder = new TemporaryFolder();
