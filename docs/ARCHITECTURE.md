@@ -23,7 +23,7 @@ tests/
 | Zip building | `ZipArchiveBuilder`, `ZipPlan` | Builds review-selected zips; deduplicates internal name collisions. |
 | Anonymizer | `AnonymizerService`, `AnonymizerOptions` | Renames submissions / strips zip-internal paths. Never mutates source files — it changes only what is sent. |
 | Secrets | `DpapiFileSecretStore` (`ISecretStore`) | API key in `apikey.bin`, DPAPI current-user scope. Named for exactly what it does. |
-| Settings | `AppSettingsStore`, `AppSettings` | JSON under `%APPDATA%\VirusTotalOneClick`; corrupt files fall back to defaults rather than crashing. |
+| Settings | `AppSettingsStore`, `AppSettings` | JSON under `%APPDATA%\VirusTotalOneClick`; atomic saves, and unreadable files fall back to safe defaults (upload confirmation forced on) rather than crashing. |
 | History | `UploadHistoryStore` (`IUploadHistoryStore`) | Append-only JSONL; tolerant of corrupt lines; multi-process appends are safe. `NullUploadHistoryStore` when history is off. |
 | Shell integration | `ShellIntegrationService`, `ShellIntegrationInstaller`, shortcut services | Generates the registry entries (`HKCU\Software\Classes\*\shell\...`), Send To / Start Menu / startup `.lnk` files. Everything per-user; no HKLM. |
 | CLI | `CommandLineParser`, `CommandLineOptions`, `AppMode` | Routes `upload <paths>`, `settings`, `history`, `install-shell`, `uninstall-shell`; no arguments means first-run setup or settings. |
@@ -37,7 +37,7 @@ tests/
 ## Data flow: right-click → report
 
 ```
-Explorer verb: VirusTotalOneClick.exe upload "C:\path\file.exe"
+Explorer verb: VirusTotalOneClick.exe upload --path "C:\path\file.exe"
   → CommandLineParser → AppMode.Upload
   → SingleInstanceCoordinator (primary? else forward + exit)
   → UploadPlanner → UploadProgressWindow (queue)
@@ -49,6 +49,6 @@ Folders differ only at the front: the same `upload` verb with a folder argument 
 
 ## Trust boundaries
 
-- **Outbound network:** exactly one host, `www.virustotal.com`, HTTPS only. The API key travels only in the `x-apikey` header to that host.
+- **Outbound network:** `virustotal.com` hosts only, HTTPS only — enforced in code, including the one-time upload URL the API hands back for large files, which is validated before the key is attached. The API key travels only in the `x-apikey` header.
 - **At rest:** the key is DPAPI-encrypted per user. That protects against other accounts and offline disk theft — not against code already running as the same user.
 - **Registry writes:** all shell integration is HKCU; installing and uninstalling never needs elevation.

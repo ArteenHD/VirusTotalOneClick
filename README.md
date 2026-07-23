@@ -28,7 +28,7 @@ The app follows your Windows theme and accent color — every window works in li
 
 ### Verify your download (optional but recommended)
 
-Every release ships a SHA-256 checksum and a GitHub build-provenance attestation, so you can confirm the file you downloaded is exactly what the release workflow built:
+Every release asset — the installer and the portable zip — ships a SHA-256 checksum and a GitHub build-provenance attestation, so you can confirm the file you downloaded is exactly what the release workflow built:
 
 ```powershell
 # Checksum: compare against VirusTotalOneClickSetup.exe.sha256 from the release
@@ -38,9 +38,11 @@ Get-FileHash .\VirusTotalOneClickSetup.exe -Algorithm SHA256
 gh attestation verify .\VirusTotalOneClickSetup.exe --repo ArteenHD/VirusTotalOneClick
 ```
 
+> `gh attestation verify` requires [GitHub CLI](https://cli.github.com/) 2.49 or newer, signed in via `gh auth login`. The same two commands work for the zip.
+
 ### Portable
 
-Prefer no installer? Download **VirusTotalOneClick-win-x64.zip** from the release, extract it anywhere, and run:
+Prefer no installer? Download **VirusTotalOneClick-win-x64.zip** from the release and extract it anywhere — everything lands in a `VirusTotalOneClick-win-x64` folder. From inside it, run:
 
 ```powershell
 .\VirusTotalOneClick.exe install-shell    # add the Explorer integration
@@ -84,7 +86,7 @@ Also available: **Send To → Upload to VirusTotal** for keyboard-friendly workf
 ## Security & Privacy
 
 - **Your API key** is stored in `%APPDATA%\VirusTotalOneClick\apikey.bin`, encrypted with Windows DPAPI in current-user scope ([`DpapiFileSecretStore.cs`](src/VirusTotalOneClick.Core/DpapiFileSecretStore.cs)). Being honest about what that means: DPAPI protects the key at rest — against other users on the machine and against someone copying the file off your disk. It does **not** protect against malware already running as your user account; nothing purely software-based can.
-- **Network traffic** goes exclusively to `https://www.virustotal.com/api/v3/` over HTTPS ([`VirusTotalClient.cs`](src/VirusTotalOneClick.Core/VirusTotalClient.cs)). Your key is sent only to VirusTotal, never anywhere else. There is no telemetry, analytics, or update phone-home.
+- **Network traffic** goes exclusively to VirusTotal — `www.virustotal.com` and its subdomains — over HTTPS, and the code enforces it ([`VirusTotalClient.cs`](src/VirusTotalOneClick.Core/VirusTotalClient.cs)): even the one-time upload address VirusTotal returns for large files is validated before your key is attached. There is no telemetry, analytics, or update phone-home.
 - **Upload history** is a local JSONL file (`%APPDATA%\VirusTotalOneClick\history.jsonl`) that never leaves your machine. It is optional and clearable from Settings.
 - The uninstaller asks whether to remove your saved settings, history, and API key.
 
@@ -109,7 +111,13 @@ The full source is in this repository, releases are built by a public GitHub Act
 Releases are currently unsigned — code-signing certificates are expensive for a free tool, and signing is planned. Until then, checksums and attestations are the verification story.
 
 **Does it work on Windows 10?**
-Windows 11 is the primary target. Windows 10 is best-effort: everything functions, and the newer window materials fall back gracefully to solid backgrounds.
+Windows 11 is the primary target. Windows 10 version 1809 (build 17763) or newer is best-effort: everything functions, and the newer window materials fall back gracefully to solid backgrounds. Older builds are not supported — the installer refuses them.
+
+**How do I update?**
+Run the new installer over the old version — your settings, history, and API key stay in place. Portable users: replace the folder's contents (run `uninstall-shell` first if you're also moving the folder, then `install-shell` from the new location).
+
+**How do I fully remove the portable version?**
+Run `.\VirusTotalOneClick.exe uninstall-shell`, delete the folder, and — if you also want your settings, history, and API key gone — delete `%APPDATA%\VirusTotalOneClick`.
 
 ## Scope and maintenance
 
