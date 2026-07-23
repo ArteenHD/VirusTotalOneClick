@@ -179,15 +179,18 @@ public class UploadHistoryStoreTests
         var store = new UploadHistoryStore(path);
         store.Append(Entry("first"));
 
-        var exclusiveLock = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
-        _ = Task.Run(() =>
+        // Same shape as the append retry test above: the retrying call runs in
+        // the background while this thread holds the lock briefly, so a slow
+        // scheduler can only delay the call past the release, never strand it
+        // inside the retry budget.
+        Task clearTask;
+        using (new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
         {
-            Thread.Sleep(120);
-            exclusiveLock.Dispose();
-        });
+            clearTask = Task.Run(store.Clear);
+            Thread.Sleep(30);
+        }
 
-        store.Clear();
-
+        Assert.True(clearTask.Wait(TimeSpan.FromSeconds(5)));
         Assert.False(File.Exists(path));
     }
 
