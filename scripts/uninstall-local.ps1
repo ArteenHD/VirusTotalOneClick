@@ -23,6 +23,10 @@ function Invoke-AppVerb {
     $startInfo.RedirectStandardInput = $true
 
     $process = [System.Diagnostics.Process]::Start($startInfo)
+    # Close the redirected stdin right away: a child that reads from it
+    # (rather than ignoring it) would otherwise block until the timeout below
+    # forces it closed, instead of seeing end-of-input and exiting on its own.
+    $process.StandardInput.Close()
     try {
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
             # The portable scripts must run under Windows PowerShell as well as
@@ -35,7 +39,9 @@ function Invoke-AppVerb {
             else {
                 & taskkill.exe /T /F /PID $process.Id *> $null
             }
-            $process.WaitForExit()
+            if (-not $process.WaitForExit(5000)) {
+                throw "'$ExecutablePath' did not exit within 5 seconds of being asked to terminate."
+            }
         }
         return $process.ExitCode
     }

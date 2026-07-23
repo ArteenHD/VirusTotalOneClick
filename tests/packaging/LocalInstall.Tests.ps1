@@ -26,14 +26,28 @@ Describe 'install-local.ps1' {
     }
 
     It 'fails the install when the shell-integration child process exits non-zero' {
-        # A renamed cmd.exe stands in for the app: it rejects the install-shell
-        # argument and exits non-zero, which the script must surface as a failure.
+        # A renamed where.exe stands in for the app: given "install-shell" it
+        # cannot find a matching file on PATH, so it exits non-zero on its own
+        # (without touching stdin), which the script must surface as a failure.
         $staged = Join-Path $TestDrive 'failing-src'
         New-Item -ItemType Directory -Path $staged -Force | Out-Null
-        Copy-Item (Join-Path $env:SystemRoot 'System32\cmd.exe') (Join-Path $staged 'VirusTotalOneClick.exe')
+        Copy-Item (Join-Path $env:SystemRoot 'System32\where.exe') (Join-Path $staged 'VirusTotalOneClick.exe')
 
         $target = Join-Path $TestDrive 'failing-install'
         { & (Join-Path $script:Scripts 'install-local.ps1') -SourcePath $staged -InstallPath $target -ShellIntegrationTimeoutSeconds 3 } |
+            Should -Throw '*Shell integration install failed*'
+    }
+
+    It 'kills a shell-integration child that outlives the timeout and fails the install' {
+        # A renamed ping.exe stands in for a genuinely hung app: given
+        # "install-shell" as a target it never resolves in time, so this
+        # exercises timeout -> kill -> post-kill wait, not a fast exit.
+        $staged = Join-Path $TestDrive 'hanging-src'
+        New-Item -ItemType Directory -Path $staged -Force | Out-Null
+        Copy-Item (Join-Path $env:SystemRoot 'System32\ping.exe') (Join-Path $staged 'VirusTotalOneClick.exe')
+
+        $target = Join-Path $TestDrive 'hanging-install'
+        { & (Join-Path $script:Scripts 'install-local.ps1') -SourcePath $staged -InstallPath $target -ShellIntegrationTimeoutSeconds 1 } |
             Should -Throw '*Shell integration install failed*'
     }
 }
@@ -58,10 +72,20 @@ Describe 'uninstall-local.ps1' {
     }
 
     It 'fails when the shell-integration child process exits non-zero' {
+        # A renamed where.exe stands in for the app: see the matching install-local.ps1 test for why.
         $install = Join-Path $TestDrive 'un-failing\VirusTotalOneClick'
         New-Item -ItemType Directory -Path $install -Force | Out-Null
-        Copy-Item (Join-Path $env:SystemRoot 'System32\cmd.exe') (Join-Path $install 'VirusTotalOneClick.exe')
+        Copy-Item (Join-Path $env:SystemRoot 'System32\where.exe') (Join-Path $install 'VirusTotalOneClick.exe')
         { & (Join-Path $script:Scripts 'uninstall-local.ps1') -InstallPath $install -KeepAppFiles -ShellIntegrationTimeoutSeconds 3 } |
+            Should -Throw '*Shell integration uninstall failed*'
+    }
+
+    It 'kills a shell-integration child that outlives the timeout and fails the uninstall' {
+        # A renamed ping.exe stands in for a genuinely hung app: see the matching install-local.ps1 test for why.
+        $install = Join-Path $TestDrive 'un-hanging\VirusTotalOneClick'
+        New-Item -ItemType Directory -Path $install -Force | Out-Null
+        Copy-Item (Join-Path $env:SystemRoot 'System32\ping.exe') (Join-Path $install 'VirusTotalOneClick.exe')
+        { & (Join-Path $script:Scripts 'uninstall-local.ps1') -InstallPath $install -KeepAppFiles -ShellIntegrationTimeoutSeconds 1 } |
             Should -Throw '*Shell integration uninstall failed*'
     }
 }
