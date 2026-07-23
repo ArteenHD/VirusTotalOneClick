@@ -29,7 +29,7 @@ To try your build end-to-end: `pwsh scripts/install-local.ps1` publishes and ins
 - Keep PRs focused — one fix or improvement per PR.
 - `scripts/validate.ps1` must pass.
 - New behavior needs tests. Core logic is tested headlessly in `tests/VirusTotalOneClick.Core.Tests`; viewmodels and window smoke tests live in `tests/VirusTotalOneClick.App.Tests`.
-- Commit messages are conventional: `type(scope): subject` — lowercase, imperative, ≤72 chars. Scopes in use: `core`, `app`, `ui`, `shell`, `vt`, `installer`, `ci`, `docs`, `tooling`. The hook and CI both lint this.
+- Commit messages are conventional: `type(scope): subject` — lowercase, imperative, ≤72 chars. Scopes in use: `core`, `app`, `ui`, `shell`, `vt`, `installer`, `ci`, `docs`, `tooling` (`deps` is reserved for automated dependency updates). The hook and CI both lint this.
 
 ## Developer notes (WPF / WPF-UI)
 

@@ -28,7 +28,7 @@ if ($subject -match '^(fixup!|squash!|Merge |Revert )') {
 $failures = [System.Collections.Generic.List[string]]::new()
 
 $types = 'build|chore|ci|docs|feat|fix|perf|refactor|style|test'
-$scopes = 'core|app|ui|shell|vt|installer|ci|docs|tooling'
+$scopes = 'core|app|ui|shell|vt|installer|ci|docs|tooling|deps'
 
 if ($subject -cnotmatch "^($types)(\(($scopes)\))?!?: [a-z0-9]") {
     $failures.Add("Subject must be 'type(scope): summary' — type in [$types], optional scope in [$scopes], summary starting lowercase.")

@@ -23,6 +23,7 @@ dotnet publish $project `
     -p:PublishSingleFile=true `
     -p:IncludeNativeLibrariesForSelfExtract=true `
     -p:NuGetLockFilePath=$scratchLockFile `
+    -p:RestoreDisableParallel=true `
     --output $output
 if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
