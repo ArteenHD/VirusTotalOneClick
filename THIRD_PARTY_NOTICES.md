@@ -16,6 +16,14 @@ Bundled with WPF-UI as its icon set (`SymbolIcon`).
 - Copyright (c) 2020 Microsoft Corporation
 - License: MIT
 
+## .NET Runtime
+
+Self-contained publishing redistributes the .NET runtime and WPF libraries with the app.
+
+- Project: <https://github.com/dotnet/runtime>
+- Copyright (c) .NET Foundation and Contributors
+- License: MIT
+
 ---
 
 ## MIT License

@@ -42,6 +42,8 @@ Describe 'package-windows.ps1' {
         $entries | Should -Contain 'VirusTotalOneClick-win-x64/VirusTotalOneClick.exe'
         $entries | Should -Contain 'VirusTotalOneClick-win-x64/install-local.ps1'
         $entries | Should -Contain 'VirusTotalOneClick-win-x64/uninstall-local.ps1'
+        $entries | Should -Contain 'VirusTotalOneClick-win-x64/LICENSE'
+        $entries | Should -Contain 'VirusTotalOneClick-win-x64/THIRD_PARTY_NOTICES.md'
     }
 
     It 'writes a sha256 checksum file matching the zip, computed as lowercase hex + two spaces + filename' {
@@ -171,5 +173,31 @@ Describe 'installer definition' {
 
     It 'never prompts for data removal in silent uninstalls' {
         $script:Iss | Should -Match 'UninstallSilent'
+    }
+
+    It 'ships the license and third-party notices alongside the app' {
+        $script:Iss | Should -Match 'Source:\s*"\.\.\\LICENSE"'
+        $script:Iss | Should -Match 'Source:\s*"\.\.\\THIRD_PARTY_NOTICES\.md"'
+    }
+
+    It 'declares the supported Windows floor, publisher, and support channel' {
+        $script:Iss | Should -Match 'MinVersion=10\.0\.17763'
+        $script:Iss | Should -Match 'CloseApplications=yes'
+        $script:Iss | Should -Match 'AppPublisher=ArteenHD'
+        $script:Iss | Should -Match 'AppSupportURL=https://github\.com/ArteenHD/VirusTotalOneClick/issues'
+    }
+
+    It 'defaults the uninstall data-removal prompt to No' {
+        $script:Iss | Should -Match 'MB_YESNO\s+or\s+MB_DEFBUTTON2'
+    }
+
+    It 'unconditionally removes shell surfaces and shortcuts as an uninstall fallback' {
+        $script:Iss | Should -Match ([regex]::Escape('RegDeleteKeyIncludingSubkeys(HKEY_CURRENT_USER'))
+        $script:Iss | Should -Match ([regex]::Escape('Software\Classes\*\shell\VirusTotalOneClick'))
+        $script:Iss | Should -Match ([regex]::Escape('Software\Classes\Directory\shell\VirusTotalOneClick'))
+        $script:Iss | Should -Match ([regex]::Escape('Upload to VirusTotal.lnk'))
+        $script:Iss | Should -Match ([regex]::Escape('VirusTotal OneClick Settings.lnk'))
+        # The fallback must run even in silent uninstalls, so it has to precede the silent-mode exit.
+        $script:Iss.IndexOf('RegDeleteKeyIncludingSubkeys') | Should -BeLessThan $script:Iss.IndexOf('UninstallSilent')
     }
 }

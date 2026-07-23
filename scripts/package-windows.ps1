@@ -34,6 +34,8 @@ try {
 
     Copy-Item -Path (Join-Path $PSScriptRoot "install-local.ps1") -Destination $stagingContent -Force
     Copy-Item -Path (Join-Path $PSScriptRoot "uninstall-local.ps1") -Destination $stagingContent -Force
+    Copy-Item -Path (Join-Path $repoRoot "LICENSE") -Destination $stagingContent -Force
+    Copy-Item -Path (Join-Path $repoRoot "THIRD_PARTY_NOTICES.md") -Destination $stagingContent -Force
 
     if (-not $IncludeSymbols) {
         Get-ChildItem -Path $stagingContent -Filter "*.pdb" -Recurse | Remove-Item -Force

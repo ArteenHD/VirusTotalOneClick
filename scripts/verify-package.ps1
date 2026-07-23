@@ -48,7 +48,9 @@ try {
     $requiredEntries = @(
         "$packageName/VirusTotalOneClick.exe",
         "$packageName/install-local.ps1",
-        "$packageName/uninstall-local.ps1"
+        "$packageName/uninstall-local.ps1",
+        "$packageName/LICENSE",
+        "$packageName/THIRD_PARTY_NOTICES.md"
     )
     foreach ($required in $requiredEntries) {
         if ($entries -notcontains $required) {
