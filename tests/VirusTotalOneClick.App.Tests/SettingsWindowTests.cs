@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Windows;
 using VirusTotalOneClick.Core;
 using VirusTotalOneClick.UI;
@@ -517,5 +518,18 @@ public class SettingsWindowTests
 
         Assert.False(string.IsNullOrWhiteSpace(version));
         Assert.Matches(@"^\d+\.\d+\.\d+", version);
+    }
+
+    [Fact]
+    public void TheAppVersionMatchesTheCoreVersion()
+    {
+        // Both projects inherit their version from Directory.Build.props with
+        // no per-project override; this fails if either one grows one back.
+        var coreAssembly = Assembly.Load("VirusTotalOneClick.Core");
+
+        var appVersion = AppVersionInfo.GetInformationalVersion();
+        var coreVersion = AppVersionInfo.GetInformationalVersion(coreAssembly);
+
+        Assert.Equal(coreVersion, appVersion);
     }
 }

@@ -7,8 +7,9 @@ public class AssemblyVersionTests
     [Fact]
     public void CoreAssemblyVersionMatchesProductVersion()
     {
-        var assembly = Assembly.Load("VirusTotalOneClick.Core");
+        var coreAssembly = Assembly.Load("VirusTotalOneClick.Core");
+        var testAssembly = Assembly.GetExecutingAssembly();
 
-        Assert.Equal(new Version(0, 1, 0, 0), assembly.GetName().Version);
+        Assert.Equal(testAssembly.GetName().Version, coreAssembly.GetName().Version);
     }
 }

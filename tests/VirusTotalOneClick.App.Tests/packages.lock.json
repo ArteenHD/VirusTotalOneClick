@@ -109,7 +109,7 @@
       "virustotaloneclick": {
         "type": "Project",
         "dependencies": {
-          "VirusTotalOneClick.Core": "[0.1.0, )",
+          "VirusTotalOneClick.Core": "[1.0.0, )",
           "WPF-UI": "[4.3.0, )"
         }
       },

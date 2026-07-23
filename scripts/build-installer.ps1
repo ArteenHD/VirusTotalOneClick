@@ -40,10 +40,10 @@ if (-not $InnoSetupCompiler) {
 
 $installerScript = Join-Path $repoRoot "installer\VirusTotalOneClick.iss"
 
-$csproj = Join-Path $repoRoot "src\VirusTotalOneClick\VirusTotalOneClick.csproj"
-$version = ([xml](Get-Content -Raw $csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+$buildProps = Join-Path $repoRoot "Directory.Build.props"
+$version = ([xml](Get-Content -Raw $buildProps)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 if ([string]::IsNullOrWhiteSpace($version)) {
-    throw "No <Version> found in $csproj."
+    throw "No <Version> found in $buildProps."
 }
 
 & $InnoSetupCompiler "/DPublishPath=$PublishPath" "/DAppVersion=$version" $installerScript
