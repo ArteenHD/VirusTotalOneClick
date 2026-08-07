@@ -34,6 +34,15 @@ if ($LASTEXITCODE -ne 0) {
 
 $failedCount = 0
 foreach ($commit in @($commits | Where-Object { $_ })) {
+    # Dependabot's generated messages carry a mandatory sign-off trailer and
+    # package names that can push the subject past any length limit; they are
+    # squash-merged under conventional subjects, so the branch commits pass.
+    $author = git -C $repoRoot log -1 --format=%an $commit
+    if ($author -eq 'dependabot[bot]') {
+        Write-Host "skip $commit (dependabot)"
+        continue
+    }
+
     $messageFile = Join-Path ([System.IO.Path]::GetTempPath()) "commit-message-$commit.txt"
     git -C $repoRoot log -1 --format=%B $commit | Set-Content -LiteralPath $messageFile
     try {
