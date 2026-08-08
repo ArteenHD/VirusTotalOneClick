@@ -16,10 +16,11 @@ public partial class SettingsWindow : AppWindow
         Action<AppSettings>? applyIntegration = null,
         Action? openHistory = null,
         Func<string, CancellationToken, Task<ApiKeyValidationStatus>>? validateApiKey = null,
-        ApiKeyValidator? apiKeyValidator = null)
+        ApiKeyValidator? apiKeyValidator = null,
+        bool isFirstRun = false)
     {
         _viewModel = new SettingsViewModel(
-            settings, saveSettings, secretStore, clearHistory, applyIntegration, openHistory, validateApiKey, apiKeyValidator);
+            settings, saveSettings, secretStore, clearHistory, applyIntegration, openHistory, validateApiKey, apiKeyValidator, isFirstRun);
         DataContext = _viewModel;
         InitializeComponent();
         // The viewmodel loads the saved key before the password box exists, so
@@ -38,6 +39,11 @@ public partial class SettingsWindow : AppWindow
         Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.Background,
             new Action(PageScroller.ScrollToTop));
+
+        if (_viewModel.IsFirstRun)
+        {
+            ApiKeyPasswordBox.Focus();
+        }
     }
 
     public IReadOnlyList<string> SectionNames { get; } = SettingsViewModel.Sections;

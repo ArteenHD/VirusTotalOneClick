@@ -24,6 +24,20 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void AWorkAreaShorterThanTheDesignHeightClampsStartupHeightWithAMargin()
+    {
+        Assert.Equal(676d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 700, minHeight: 480));
+        Assert.Equal(780d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 2000, minHeight: 480));
+        Assert.Equal(780d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 0, minHeight: 480));
+    }
+
+    [Fact]
+    public void TheClampNeverUndercutsTheWindowsMinimumHeight()
+    {
+        Assert.Equal(480d, AppWindow.ClampHeightToWorkArea(designHeight: 780, workAreaHeight: 490, minHeight: 480));
+    }
+
+    [Fact]
     public void TheWindowHeightIsWiredToTheWorkAreaClamp()
     {
         StaTestRunner.Run(() =>
@@ -84,6 +98,28 @@ public class SettingsWindowTests
             Assert.True(settings.ScrubSubmittedFilename);
             Assert.False(settings.EnableSendToShortcut);
             Assert.False(settings.EnableStartMenuShortcuts);
+            Assert.True(settings.LaunchOnStartup);
+        });
+    }
+
+    [Fact]
+    public void RadioTogglesRoundTripThroughBuildSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default);
+            using var closer = new WindowCloser(window);
+
+            window.ViewModel.ConfirmBeforeFileUpload = true;
+            window.ViewModel.ReviewThenZip = true;
+            window.ViewModel.KeepLocalHistory = false;
+            window.ViewModel.LaunchOnStartup = true;
+
+            var settings = window.ViewModel.BuildSettings();
+
+            Assert.True(settings.ConfirmBeforeFileUpload);
+            Assert.Equal(FolderUploadMode.ReviewThenZip, settings.DefaultFolderMode);
+            Assert.False(settings.KeepLocalHistory);
             Assert.True(settings.LaunchOnStartup);
         });
     }

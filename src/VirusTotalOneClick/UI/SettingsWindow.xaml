@@ -33,11 +33,11 @@
                         <ui:SymbolIcon Style="{StaticResource PageIconStyle}" Symbol="Settings24" />
                     </Border>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="Settings" />
+                        <TextBlock Style="{StaticResource WindowTitleTextStyle}" Text="{Binding PageTitleText}" />
                         <TextBlock
                             Style="{StaticResource CaptionTextStyle}"
                             Margin="{StaticResource LabelSpacing}"
-                            Text="Uploads, folders, privacy, history, and Explorer integration." />
+                            Text="{Binding PageCaptionText}" />
                     </StackPanel>
                 </Grid>
 
@@ -210,8 +210,9 @@
                     Grid.Column="1"
                     Appearance="Primary"
                     IsDefault="True"
-                    Content="Save settings"
-                    Command="{Binding SaveSettingsCommand}" />
+                    Command="{Binding SaveSettingsCommand}">
+                    <TextBlock Text="{Binding SaveButtonText}" />
+                </ui:Button>
             </Grid>
         </Border>
     </Grid>

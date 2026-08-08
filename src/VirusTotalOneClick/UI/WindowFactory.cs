@@ -40,17 +40,11 @@ public sealed class WindowFactory
             AppMode.Settings => CreateSettingsWindow(),
             AppMode.History => CreateHistoryWindow(),
             AppMode.Upload => CreateUploadWindow(options.Paths, isDevMode),
-            _ => new SetupWindow(
-                _composition.Settings,
-                _composition.SaveSettings,
-                _composition.SecretStore,
-                _composition.ApplyIntegration,
-                _composition.ValidateApiKey,
-                _composition.ApiKeyValidator),
+            _ => CreateSettingsWindow(isFirstRun: true),
         };
     }
 
-    private SettingsWindow CreateSettingsWindow()
+    private SettingsWindow CreateSettingsWindow(bool isFirstRun = false)
         => new(
             _composition.Settings,
             _composition.SaveSettings,
@@ -59,7 +53,8 @@ public sealed class WindowFactory
             _composition.ApplyIntegration,
             CreateOpenHistoryAction(),
             _composition.ValidateApiKey,
-            _composition.ApiKeyValidator);
+            _composition.ApiKeyValidator,
+            isFirstRun);
 
     private Action CreateOpenSettingsAction()
         => () => CreateSettingsWindow().Show();

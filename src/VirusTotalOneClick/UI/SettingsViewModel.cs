@@ -23,10 +23,11 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly Action? _openHistory;
     private readonly Func<string, CancellationToken, Task<ApiKeyValidationStatus>>? _validateApiKey;
     private readonly ApiKeyValidator _apiKeyValidator;
+    private readonly bool _isFirstRun;
 
     private string _apiKeyText = string.Empty;
     private string _committedApiKey = string.Empty;
-    private string _settingsStatusText = "Settings not saved in this session.";
+    private string _settingsStatusText;
     private string _apiKeyStatusText;
     private string _historyStatusText;
 
@@ -50,7 +51,8 @@ public sealed class SettingsViewModel : ObservableObject
         Action<AppSettings>? applyIntegration = null,
         Action? openHistory = null,
         Func<string, CancellationToken, Task<ApiKeyValidationStatus>>? validateApiKey = null,
-        ApiKeyValidator? apiKeyValidator = null)
+        ApiKeyValidator? apiKeyValidator = null,
+        bool isFirstRun = false)
     {
         ArgumentNullException.ThrowIfNull(settings);
         _saveSettings = saveSettings;
@@ -60,6 +62,7 @@ public sealed class SettingsViewModel : ObservableObject
         _openHistory = openHistory;
         _validateApiKey = validateApiKey;
         _apiKeyValidator = apiKeyValidator ?? new ApiKeyValidator(allowTestKey: false);
+        _isFirstRun = isFirstRun;
 
         _confirmBeforeFileUpload = settings.ConfirmBeforeFileUpload;
         _defaultFolderMode = settings.DefaultFolderMode;
@@ -71,9 +74,14 @@ public sealed class SettingsViewModel : ObservableObject
         _enableStartMenuShortcuts = settings.EnableStartMenuShortcuts;
         _launchOnStartup = settings.LaunchOnStartup;
 
+        _settingsStatusText = isFirstRun ? "Setup not saved." : "Settings not saved in this session.";
         _apiKeyText = _secretStore?.ReadApiKey() ?? string.Empty;
         _committedApiKey = _apiKeyText;
-        _apiKeyStatusText = _apiKeyText.Length > 0 ? "API key saved." : "No API key saved.";
+        _apiKeyStatusText = _apiKeyText.Length > 0
+            ? "API key saved."
+            : isFirstRun
+                ? "Stored with Windows current-user protection."
+                : "No API key saved.";
         _historyStatusText = settings.KeepLocalHistory
             ? "Local history is enabled."
             : "Local history is disabled.";
@@ -81,7 +89,9 @@ public sealed class SettingsViewModel : ObservableObject
         SaveSettingsCommand = new AsyncRelayCommand(
             () => SaveSettingsAsync(CancellationToken.None),
             canExecute: () => !AnySaveIsRunning,
-            onError: ex => SettingsStatusText = $"Save failed: {ex.GetBaseException().Message}");
+            onError: ex => SettingsStatusText = _isFirstRun
+                ? $"Setup failed: {ex.GetBaseException().Message}"
+                : $"Save failed: {ex.GetBaseException().Message}");
         SaveApiKeyCommand = new AsyncRelayCommand(
             () => SaveApiKeyAsync(CancellationToken.None),
             canExecute: () => !AnySaveIsRunning,
@@ -112,6 +122,16 @@ public sealed class SettingsViewModel : ObservableObject
     public RelayCommand OpenHistoryCommand { get; }
 
     public string VersionCaption { get; } = $"Version {AppVersionInfo.GetInformationalVersion()}";
+
+    public bool IsFirstRun => _isFirstRun;
+
+    public string PageTitleText => _isFirstRun ? "Set up VirusTotal OneClick" : "Settings";
+
+    public string PageCaptionText => _isFirstRun
+        ? "Files upload to VirusTotal when you use the Explorer action. Folder selections open for review first."
+        : "Uploads, folders, privacy, history, and Explorer integration.";
+
+    public string SaveButtonText => _isFirstRun ? "Save setup" : "Save settings";
 
     public string ApiKeyText
     {
@@ -304,11 +324,12 @@ public sealed class SettingsViewModel : ObservableObject
         try
         {
             _applyIntegration?.Invoke(settings);
-            SettingsStatusText = "Settings saved.";
+            SettingsStatusText = _isFirstRun ? "Setup saved." : "Settings saved.";
         }
         catch (Exception ex)
         {
-            SettingsStatusText = $"Settings saved, but Windows integration failed: {ex.GetBaseException().Message}";
+            var prefix = _isFirstRun ? "Setup saved" : "Settings saved";
+            SettingsStatusText = $"{prefix}, but Windows integration failed: {ex.GetBaseException().Message}";
         }
     }
 

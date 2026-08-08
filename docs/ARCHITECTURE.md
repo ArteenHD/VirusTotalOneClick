@@ -31,7 +31,7 @@ tests/
 ## App
 
 - **`AppBootstrapper` / `AppComposition`** — poor-man's DI: composes Core services with real filesystem/registry/HTTP implementations and picks the window for the parsed CLI mode.
-- **Windows** — Setup, Settings, Folder Review, Upload Progress, History. Each is a `FluentWindow` (WPF-UI) with a viewmodel; shared visual language lives in `Themes/Tokens.xaml`.
+- **Windows** — Settings (which doubles as first-run setup), Folder Review, Upload Progress, History. Each is a `FluentWindow` (WPF-UI) with a viewmodel; shared visual language lives in `Themes/Tokens.xaml`.
 - **Single instance** — `SingleInstanceCoordinator` owns a per-user named pipe. When Explorer launches one process per selected file, the first becomes primary and the rest forward their arguments and exit; `InvocationCoalescer` merges forwarded paths into the primary's queue within a debounce window, so a 12-file selection is one window with 12 rows.
 
 ## Data flow: right-click → report

@@ -6,8 +6,8 @@ public sealed record ApiKeySaveOutcome(bool Saved, string StatusText);
 
 /// <summary>
 /// The one API-key save pipeline — trim, test-key policy, 64-hex format check,
-/// optional live probe, then store write — so Setup and Settings enforce the
-/// exact same rules and wording.
+/// optional live probe, then store write — so every place a key can be entered
+/// enforces the exact same rules and wording.
 /// </summary>
 public static class ApiKeySaveFlow
 {

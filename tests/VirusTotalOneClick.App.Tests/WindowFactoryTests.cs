@@ -52,9 +52,11 @@ public class WindowFactoryTests
             using var closerB = new WindowCloser(history);
             Assert.IsType<HistoryWindow>(history);
 
-            var setup = factory.Create(new CommandLineOptions(AppMode.Interactive, []));
-            using var closerC = new WindowCloser(setup);
-            Assert.IsType<SetupWindow>(setup);
+            var firstRun = factory.Create(new CommandLineOptions(AppMode.Interactive, []));
+            using var closerC = new WindowCloser(firstRun);
+            var firstRunSettings = Assert.IsType<SettingsWindow>(firstRun);
+            Assert.True(firstRunSettings.ViewModel.IsFirstRun);
+            Assert.False(((SettingsWindow)settings).ViewModel.IsFirstRun);
         });
     }
 

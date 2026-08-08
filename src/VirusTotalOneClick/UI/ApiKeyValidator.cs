@@ -3,9 +3,9 @@ using System.Text.RegularExpressions;
 namespace VirusTotalOneClick.UI;
 
 /// <summary>
-/// API-key checks shared by Setup and Settings. The development test key is
-/// honored only when the composition root injects an allowing policy, so both
-/// behaviors stay observable at runtime.
+/// API-key checks shared by every place a key can be entered. The development
+/// test key is honored only when the composition root injects an allowing
+/// policy, so both behaviors stay observable at runtime.
 /// </summary>
 public sealed partial class ApiKeyValidator
 {
