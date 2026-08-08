@@ -14,6 +14,9 @@ public class DesignFoundationTests
     [InlineData("SystemFillColorCriticalBrush")]
     [InlineData("TextFillColorPrimaryBrush")]
     [InlineData("TextFillColorSecondaryBrush")]
+    [InlineData("SubtleFillColorSecondaryBrush")]
+    [InlineData("SubtleFillColorTertiaryBrush")]
+    [InlineData("AccentFillColorDefaultBrush")]
     public void TheStatusColorVocabularyResolvesFromTheme(string key)
     {
         StaTestRunner.Run(() =>
