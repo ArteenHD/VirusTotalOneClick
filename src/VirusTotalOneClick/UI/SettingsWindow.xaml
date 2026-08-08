@@ -52,9 +52,15 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
+                            <!--
+                                The built-in clear (x) button only empties the
+                                box and reads as a rival to the real "Clear"
+                                button beside it, so it stays off here.
+                            -->
                             <ui:PasswordBox
                                 x:Name="ApiKeyPasswordBox"
                                 PlaceholderText="Paste your VirusTotal API key"
+                                ClearButtonEnabled="False"
                                 PasswordChanged="ApiKeyPasswordBox_PasswordChanged" />
                             <TextBlock
                                 Style="{StaticResource CaptionTextStyle}"
