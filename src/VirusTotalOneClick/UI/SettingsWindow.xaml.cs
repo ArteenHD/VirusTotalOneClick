@@ -6,6 +6,7 @@ namespace VirusTotalOneClick.UI;
 public partial class SettingsWindow : AppWindow
 {
     private readonly SettingsViewModel _viewModel;
+    private readonly double _openingHeight;
     private bool _suppressPasswordSync;
 
     public SettingsWindow(
@@ -27,6 +28,7 @@ public partial class SettingsWindow : AppWindow
         // push it in once here; it shows masked until the reveal button is used.
         SyncPasswordBoxFromViewModel();
         Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
+        _openingHeight = Height;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         Loaded += OnLoaded;
     }
@@ -36,14 +38,37 @@ public partial class SettingsWindow : AppWindow
         // When the work-area clamp leaves the page taller than the viewport,
         // startup layout of the prefilled key box can drift the scroll
         // position, so the page is pinned back to the top after layout settles.
+        // Text metrics also vary by machine; if the rendered page runs a little
+        // taller than the design height, the window grows to fit (still capped
+        // by the work area) rather than opening with a needless scrollbar.
         Dispatcher.BeginInvoke(
             System.Windows.Threading.DispatcherPriority.Background,
-            new Action(PageScroller.ScrollToTop));
+            new Action(() =>
+            {
+                GrowToFitPage();
+                PageScroller.ScrollToTop();
+            }));
 
         if (_viewModel.IsFirstRun)
         {
             ApiKeyPasswordBox.Focus();
         }
+    }
+
+    private void GrowToFitPage()
+    {
+        // Only at the untouched opening size: a height the caller or user has
+        // already changed is theirs, and a shortfall the work-area clamp
+        // created cannot be grown away.
+        if (Height != _openingHeight || PageScroller.ScrollableHeight <= 0)
+        {
+            return;
+        }
+
+        Height = ClampHeightToWorkArea(
+            Height + PageScroller.ScrollableHeight,
+            SystemParameters.WorkArea.Height,
+            MinHeight);
     }
 
     public IReadOnlyList<string> SectionNames { get; } = SettingsViewModel.Sections;
