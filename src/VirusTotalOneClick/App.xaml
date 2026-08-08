@@ -32,6 +32,15 @@
                 <Setter Property="MinHeight" Value="36" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
             </Style>
+
+            <!--
+                WPF-UI's CheckBox carries an 11px left inset that its RadioButton
+                does not, so mixed cards get two left rails. Zero it so every
+                toggle glyph sits on the card content edge.
+            -->
+            <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
+                <Setter Property="Padding" Value="0,5,11,6" />
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>
