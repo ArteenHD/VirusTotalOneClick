@@ -374,6 +374,52 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void AKeyEditedWhileItsCheckRunsIsStillCommittedBySaveSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            // Plain TaskCompletionSource: resolving it below runs the rest of
+            // the key save inline on this thread, so the edit lands strictly
+            // between the probe starting and the store write.
+            var editedKey = new string('e', 64);
+            var probes = 0;
+            var validationStarted = new TaskCompletionSource();
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>();
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: store,
+                validateApiKey: (_, _) =>
+                {
+                    if (++probes > 1)
+                    {
+                        return Task.FromResult(ApiKeyValidationStatus.Valid);
+                    }
+
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.ViewModel.SaveApiKeyCommand.Execute(null);
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            window.SetApiKeyText(editedKey);
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+
+            // The finished save stored the key it actually checked.
+            Assert.Equal(ValidKey, store.ReadApiKey());
+
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(editedKey, store.ReadApiKey());
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
     public void WhitespaceAroundAnUnsavedKeyIsTrimmedBySaveSettings()
     {
         StaTestRunner.Run(() =>
@@ -771,6 +817,43 @@ public class SettingsWindowTests
 
             Assert.True(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
             Assert.True(window.ViewModel.SaveApiKeyCommand.CanExecute(null));
+        });
+    }
+
+    [Fact]
+    public void TheKeyButtonsAreRequeriedWhenASettingsSaveStartsAndFinishes()
+    {
+        StaTestRunner.Run(() =>
+        {
+            // The guards above only prove CanExecute returns the right answer
+            // when asked; this proves the buttons are actually told to ask, so
+            // they visibly disable and re-enable around the save.
+            var validationStarted = new TaskCompletionSource();
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: new FakeSecretStore(),
+                validateApiKey: (_, _) =>
+                {
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            var requeries = 0;
+            window.ViewModel.ClearApiKeyCommand.CanExecuteChanged += (_, _) => requeries++;
+
+            window.SetApiKeyText(ValidKey);
+            window.ViewModel.SaveSettingsCommand.Execute(null);
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            var requeriesWhileRunning = requeries;
+            Assert.True(requeriesWhileRunning > 0);
+
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+
+            Assert.True(requeries > requeriesWhileRunning);
         });
     }
 

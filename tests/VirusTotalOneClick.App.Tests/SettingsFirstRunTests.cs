@@ -226,6 +226,10 @@ public class SettingsFirstRunTests
             Assert.Contains("Checking", window.ApiKeyStatusText, StringComparison.Ordinal);
             VisualTreeAssert.AssertWindowContainsText(window, "Checking");
 
+            // The key caption carries the in-flight state on its own; the
+            // footer keeps its opening line until the save actually lands.
+            Assert.Equal("Setup not saved.", window.SettingsStatusText);
+
             allowValidation.SetResult(ApiKeyValidationStatus.Valid);
             saveTask.GetAwaiter().GetResult();
             Assert.Equal("API key saved.", window.ApiKeyStatusText);

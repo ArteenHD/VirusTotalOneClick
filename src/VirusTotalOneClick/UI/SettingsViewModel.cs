@@ -281,17 +281,7 @@ public sealed class SettingsViewModel : ObservableObject
             // A key sitting unsaved in the box is committed as part of this
             // save, so pasting a key and clicking the one big button never
             // silently discards it. A failed key aborts everything below.
-            var outcome = await ApiKeySaveFlow.SaveAsync(
-                key,
-                _secretStore,
-                _apiKeyValidator,
-                _validateApiKey,
-                onChecking: status =>
-                {
-                    ApiKeyStatusText = status;
-                    return Task.CompletedTask;
-                },
-                cancellationToken).ConfigureAwait(true);
+            var outcome = await CommitApiKeyAsync(key, cancellationToken).ConfigureAwait(true);
 
             ApiKeyStatusText = outcome.StatusText;
             if (!outcome.Saved)
@@ -299,8 +289,6 @@ public sealed class SettingsViewModel : ObservableObject
                 SettingsStatusText = outcome.StatusText;
                 return;
             }
-
-            _committedApiKey = key;
         }
         else if (key.Length == 0 && _committedApiKey.Length == 0 && _secretStore is not null)
         {
@@ -335,23 +323,9 @@ public sealed class SettingsViewModel : ObservableObject
 
     public async Task SaveApiKeyAsync(CancellationToken cancellationToken)
     {
-        var outcome = await ApiKeySaveFlow.SaveAsync(
-            ApiKeyText,
-            _secretStore,
-            _apiKeyValidator,
-            _validateApiKey,
-            onChecking: status =>
-            {
-                ApiKeyStatusText = status;
-                return Task.CompletedTask;
-            },
-            cancellationToken).ConfigureAwait(true);
+        var outcome = await CommitApiKeyAsync(ApiKeyText.Trim(), cancellationToken).ConfigureAwait(true);
 
         ApiKeyStatusText = outcome.StatusText;
-        if (outcome.Saved)
-        {
-            _committedApiKey = ApiKeyText.Trim();
-        }
     }
 
     public void ClearApiKey()
@@ -387,6 +361,32 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     public void OpenHistory() => _openHistory?.Invoke();
+
+    // The one path that writes a key: check it, store it, and record what was
+    // committed. The caller passes the trimmed key it decided to save, so the
+    // key recorded here is always the key that was checked and stored — the
+    // box can be edited while the check runs without either drifting.
+    private async Task<ApiKeySaveOutcome> CommitApiKeyAsync(string key, CancellationToken cancellationToken)
+    {
+        var outcome = await ApiKeySaveFlow.SaveAsync(
+            key,
+            _secretStore,
+            _apiKeyValidator,
+            _validateApiKey,
+            onChecking: status =>
+            {
+                ApiKeyStatusText = status;
+                return Task.CompletedTask;
+            },
+            cancellationToken).ConfigureAwait(true);
+
+        if (outcome.Saved)
+        {
+            _committedApiKey = key;
+        }
+
+        return outcome;
+    }
 
     private bool AnySaveIsRunning => SaveApiKeyCommand.IsRunning || SaveSettingsCommand.IsRunning;
 
