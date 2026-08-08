@@ -99,6 +99,25 @@ public class DesignFoundationTests
         });
     }
 
+    [Fact]
+    public void TheCheckBoxOverrideAlignsGlyphsAndKeepsTheFluentTemplate()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var implicitStyle = Application.Current.TryFindResource(typeof(CheckBox)) as Style;
+            Assert.NotNull(implicitStyle);
+
+            var checkBox = new CheckBox { Content = "aligned" };
+            var radioButton = new RadioButton { Content = "aligned" };
+            RenderInWindow(checkBox);
+            RenderInWindow(radioButton);
+
+            Assert.Equal(new Thickness(0, 5, 11, 6), checkBox.Padding);
+            Assert.Equal(radioButton.Padding.Left, checkBox.Padding.Left);
+            Assert.Same(FluentTemplateOf(implicitStyle), checkBox.Template);
+        });
+    }
+
     private static System.Windows.Controls.ControlTemplate FluentTemplateOf(Style style)
     {
         for (var current = style; current is not null; current = current.BasedOn)

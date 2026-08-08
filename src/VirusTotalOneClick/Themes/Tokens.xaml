@@ -90,4 +90,15 @@
         <Setter Property="Padding" Value="10,8" />
     </Style>
 
+    <!--
+        The fluent CheckBox carries an 11px left inset that the fluent
+        RadioButton does not, so cards mixing the two show two left rails.
+        Zero it so every toggle glyph sits on the card content edge. This
+        dictionary must stay merged after the fluent controls dictionary for
+        the BasedOn lookup to resolve.
+    -->
+    <Style TargetType="{x:Type CheckBox}" BasedOn="{StaticResource {x:Type CheckBox}}">
+        <Setter Property="Padding" Value="0,5,11,6" />
+    </Style>
+
 </ResourceDictionary>
