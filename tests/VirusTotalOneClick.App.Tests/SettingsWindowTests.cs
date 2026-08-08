@@ -46,8 +46,34 @@ public class SettingsWindowTests
             using var closer = new WindowCloser(window);
 
             Assert.Equal(
-                AppWindow.ClampHeightToWorkArea(800, SystemParameters.WorkArea.Height, window.MinHeight),
+                AppWindow.ClampHeightToWorkArea(830, SystemParameters.WorkArea.Height, window.MinHeight),
                 window.Height);
+        });
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void TheDefaultHeightShowsTheWholePageWithoutAScrollbar(bool isFirstRun)
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                secretStore: store,
+                isFirstRun: isFirstRun);
+            using var closer = new WindowCloser(window);
+
+            // The work-area clamp may shrink the window on a small display; this
+            // pins the design itself: at full design height the page must fit
+            // with nothing left to scroll.
+            window.Height = 830;
+            window.Show();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            Assert.Equal(0d, window.PageScroller.ScrollableHeight);
         });
     }
 
