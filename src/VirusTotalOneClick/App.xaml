@@ -24,7 +24,49 @@
                 <Setter Property="Padding" Value="8,0,8,8" />
                 <Setter Property="BorderThickness" Value="0,0,0,1" />
                 <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                <!--
+                    The stock header chrome paints hard-coded blue hover and
+                    pressed fills. These headers are inert labels, so the
+                    template keeps only the column-resize gripper.
+                -->
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type GridViewColumnHeader}">
+                            <Grid>
+                                <Border
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    Padding="{TemplateBinding Padding}">
+                                    <ContentPresenter
+                                        HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                        VerticalAlignment="Center" />
+                                </Border>
+                                <Thumb
+                                    x:Name="PART_HeaderGripper"
+                                    Width="8"
+                                    HorizontalAlignment="Right"
+                                    Cursor="SizeWE">
+                                    <Thumb.Template>
+                                        <ControlTemplate TargetType="{x:Type Thumb}">
+                                            <Border Background="Transparent" />
+                                        </ControlTemplate>
+                                    </Thumb.Template>
+                                </Thumb>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="Role" Value="Padding">
+                                    <Setter TargetName="PART_HeaderGripper" Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                                <Trigger Property="Role" Value="Floating">
+                                    <Setter TargetName="PART_HeaderGripper" Property="Visibility" Value="Collapsed" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
             </Style>
+
             <Style TargetType="{x:Type ListViewItem}">
                 <Setter Property="Background" Value="Transparent" />
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
