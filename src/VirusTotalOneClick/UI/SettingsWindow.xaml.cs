@@ -60,7 +60,9 @@ public partial class SettingsWindow : AppWindow
 
     public Task SaveApiKey(CancellationToken cancellationToken) => _viewModel.SaveApiKeyAsync(cancellationToken);
 
-    public void SaveSettings() => _viewModel.SaveSettings();
+    public Task SaveSettings() => _viewModel.SaveSettingsAsync(CancellationToken.None);
+
+    public Task SaveSettings(CancellationToken cancellationToken) => _viewModel.SaveSettingsAsync(cancellationToken);
 
     public void ClearHistory() => _viewModel.ClearHistory();
 

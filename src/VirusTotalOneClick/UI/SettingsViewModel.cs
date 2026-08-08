@@ -25,6 +25,7 @@ public sealed class SettingsViewModel : ObservableObject
     private readonly ApiKeyValidator _apiKeyValidator;
 
     private string _apiKeyText = string.Empty;
+    private string _committedApiKey = string.Empty;
     private string _settingsStatusText = "Settings not saved in this session.";
     private string _apiKeyStatusText;
     private string _historyStatusText;
@@ -38,6 +39,8 @@ public sealed class SettingsViewModel : ObservableObject
     private bool _enableSendToShortcut;
     private bool _enableStartMenuShortcuts;
     private bool _launchOnStartup;
+
+    private bool _isRaisingSaveGuards;
 
     public SettingsViewModel(
         AppSettings settings,
@@ -69,27 +72,36 @@ public sealed class SettingsViewModel : ObservableObject
         _launchOnStartup = settings.LaunchOnStartup;
 
         _apiKeyText = _secretStore?.ReadApiKey() ?? string.Empty;
+        _committedApiKey = _apiKeyText;
         _apiKeyStatusText = _apiKeyText.Length > 0 ? "API key saved." : "No API key saved.";
         _historyStatusText = settings.KeepLocalHistory
             ? "Local history is enabled."
             : "Local history is disabled.";
 
-        SaveSettingsCommand = new RelayCommand(SaveSettings);
+        SaveSettingsCommand = new AsyncRelayCommand(
+            () => SaveSettingsAsync(CancellationToken.None),
+            canExecute: () => !AnySaveIsRunning,
+            onError: ex => SettingsStatusText = $"Save failed: {ex.GetBaseException().Message}");
         SaveApiKeyCommand = new AsyncRelayCommand(
             () => SaveApiKeyAsync(CancellationToken.None),
+            canExecute: () => !AnySaveIsRunning,
             onError: ex => ApiKeyStatusText = $"Could not save API key: {ex.GetBaseException().Message}");
-        ClearApiKeyCommand = new RelayCommand(ClearApiKey, () => !SaveApiKeyCommand.IsRunning);
+        ClearApiKeyCommand = new RelayCommand(ClearApiKey, () => !AnySaveIsRunning);
         ClearHistoryCommand = new RelayCommand(ClearHistory);
         OpenHistoryCommand = new RelayCommand(OpenHistory, () => _openHistory is not null);
 
         // A key save runs a 30-second live probe; clearing the key mid-probe
         // must not let that probe's own save land afterward and silently
         // restore what was just cleared, so Clear is disabled for the probe's
-        // duration.
-        SaveApiKeyCommand.CanExecuteChanged += (_, _) => ClearApiKeyCommand.RaiseCanExecuteChanged();
+        // duration. "Save settings" can run the same probe for a key pending
+        // in the box, so the two saving commands also exclude each other —
+        // two concurrent probes of one key could disagree and split the
+        // stored key from the reported outcome.
+        SaveApiKeyCommand.CanExecuteChanged += (_, _) => RaiseSaveGuards();
+        SaveSettingsCommand.CanExecuteChanged += (_, _) => RaiseSaveGuards();
     }
 
-    public RelayCommand SaveSettingsCommand { get; }
+    public AsyncRelayCommand SaveSettingsCommand { get; }
 
     public AsyncRelayCommand SaveApiKeyCommand { get; }
 
@@ -241,8 +253,43 @@ public sealed class SettingsViewModel : ObservableObject
         LaunchOnStartup = LaunchOnStartup,
     };
 
-    public void SaveSettings()
+    public async Task SaveSettingsAsync(CancellationToken cancellationToken)
     {
+        var key = ApiKeyText.Trim();
+        if (key.Length > 0 && key != _committedApiKey)
+        {
+            // A key sitting unsaved in the box is committed as part of this
+            // save, so pasting a key and clicking the one big button never
+            // silently discards it. A failed key aborts everything below.
+            var outcome = await ApiKeySaveFlow.SaveAsync(
+                key,
+                _secretStore,
+                _apiKeyValidator,
+                _validateApiKey,
+                onChecking: status =>
+                {
+                    ApiKeyStatusText = status;
+                    return Task.CompletedTask;
+                },
+                cancellationToken).ConfigureAwait(true);
+
+            ApiKeyStatusText = outcome.StatusText;
+            if (!outcome.Saved)
+            {
+                SettingsStatusText = outcome.StatusText;
+                return;
+            }
+
+            _committedApiKey = key;
+        }
+        else if (key.Length == 0 && _committedApiKey.Length == 0 && _secretStore is not null)
+        {
+            ApiKeyStatusText = "No API key saved.";
+        }
+
+        // An emptied box over a stored key changes nothing here; the Clear
+        // button is the only path that deletes a stored key.
+
         var settings = BuildSettings();
         try
         {
@@ -280,6 +327,10 @@ public sealed class SettingsViewModel : ObservableObject
             cancellationToken).ConfigureAwait(true);
 
         ApiKeyStatusText = outcome.StatusText;
+        if (outcome.Saved)
+        {
+            _committedApiKey = ApiKeyText.Trim();
+        }
     }
 
     public void ClearApiKey()
@@ -294,6 +345,7 @@ public sealed class SettingsViewModel : ObservableObject
             return;
         }
 
+        _committedApiKey = string.Empty;
         ApiKeyText = string.Empty;
         ApiKeyStatusText = "API key cleared.";
     }
@@ -314,4 +366,29 @@ public sealed class SettingsViewModel : ObservableObject
     }
 
     public void OpenHistory() => _openHistory?.Invoke();
+
+    private bool AnySaveIsRunning => SaveApiKeyCommand.IsRunning || SaveSettingsCommand.IsRunning;
+
+    // Each save command's state change must re-query the other saving command
+    // and Clear. Raising an event re-enters this handler through the other
+    // command's subscription, so the flag bounds the cascade to one pass.
+    private void RaiseSaveGuards()
+    {
+        if (_isRaisingSaveGuards)
+        {
+            return;
+        }
+
+        _isRaisingSaveGuards = true;
+        try
+        {
+            ClearApiKeyCommand.RaiseCanExecuteChanged();
+            SaveApiKeyCommand.RaiseCanExecuteChanged();
+            SaveSettingsCommand.RaiseCanExecuteChanged();
+        }
+        finally
+        {
+            _isRaisingSaveGuards = false;
+        }
+    }
 }

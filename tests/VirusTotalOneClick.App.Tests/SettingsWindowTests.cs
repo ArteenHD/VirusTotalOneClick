@@ -98,7 +98,7 @@ public class SettingsWindowTests
             using var closer = new WindowCloser(window);
 
             window.ViewModel.ScrubSubmittedFilename = true;
-            window.SaveSettings();
+            window.SaveSettings().GetAwaiter().GetResult();
 
             Assert.True(saved!.ScrubSubmittedFilename);
             Assert.Equal("Settings saved.", window.SettingsStatusText);
@@ -116,7 +116,7 @@ public class SettingsWindowTests
                 applyIntegration: _ => throw new InvalidOperationException("registry denied"));
             using var closer = new WindowCloser(window);
 
-            window.SaveSettings();
+            window.SaveSettings().GetAwaiter().GetResult();
 
             Assert.StartsWith("Settings saved", window.SettingsStatusText, StringComparison.Ordinal);
             Assert.Contains("Windows integration failed", window.SettingsStatusText, StringComparison.Ordinal);
@@ -137,7 +137,7 @@ public class SettingsWindowTests
                 applyIntegration: _ => integrationRan = true);
             using var closer = new WindowCloser(window);
 
-            window.SaveSettings();
+            window.SaveSettings().GetAwaiter().GetResult();
 
             Assert.False(integrationRan);
             Assert.Equal("Could not save settings: disk full", window.SettingsStatusText);
@@ -156,11 +156,230 @@ public class SettingsWindowTests
 
             window.SetApiKeyText(ValidKey);
             window.SaveApiKey().GetAwaiter().GetResult();
-            window.SaveSettings();
+            window.SaveSettings().GetAwaiter().GetResult();
 
             Assert.Equal(ValidKey, store.ReadApiKey());
             Assert.DoesNotContain(ValidKey, saved!.ToString(), StringComparison.Ordinal);
             Assert.Equal("API key saved.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void SaveSettingsCommitsAnUnsavedKeyBeforeSettingsAndIntegration()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var order = new List<string>();
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => order.Add("settings"),
+                secretStore: store,
+                applyIntegration: _ => order.Add("integration"),
+                validateApiKey: (_, _) =>
+                {
+                    order.Add("probe");
+                    return Task.FromResult(ApiKeyValidationStatus.Valid);
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.Equal(["probe", "settings", "integration"], order);
+            Assert.Equal("API key saved.", window.ApiKeyStatusText);
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void ABadKeyInTheBoxAbortsTheWholeSettingsSave()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var savedCount = 0;
+            var integrationRan = false;
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => savedCount++,
+                secretStore: new FakeSecretStore(),
+                applyIntegration: _ => integrationRan = true);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("garbage");
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(0, savedCount);
+            Assert.False(integrationRan);
+            Assert.Equal("API key must be 64 hex characters.", window.ApiKeyStatusText);
+            Assert.Equal("API key must be 64 hex characters.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void ARejectedKeyInTheBoxAbortsTheWholeSettingsSave()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var savedCount = 0;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => savedCount++,
+                secretStore: store,
+                validateApiKey: (_, _) => Task.FromResult(ApiKeyValidationStatus.Rejected));
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Null(store.ReadApiKey());
+            Assert.Equal(0, savedCount);
+            Assert.Contains("rejected", window.ApiKeyStatusText, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
+    [Fact]
+    public void ANetworkErrorDuringTheSettingsSaveKeepsBothSaves()
+    {
+        StaTestRunner.Run(() =>
+        {
+            AppSettings? saved = null;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: s => saved = s,
+                secretStore: store,
+                validateApiKey: (_, _) => Task.FromResult(ApiKeyValidationStatus.NetworkError));
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.NotNull(saved);
+            Assert.Contains("will be verified on first upload", window.ApiKeyStatusText, StringComparison.Ordinal);
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void AnUnchangedPreloadedKeyIsNotReprobedBySaveSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var probes = 0;
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            AppSettings? saved = null;
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: s => saved = s,
+                secretStore: store,
+                validateApiKey: (_, _) => { probes++; return Task.FromResult(ApiKeyValidationStatus.Valid); });
+            using var closer = new WindowCloser(window);
+
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(0, probes);
+            Assert.NotNull(saved);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void AnEmptiedKeyBoxDoesNotDeleteTheStoredKeyOnSaveSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            AppSettings? saved = null;
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: s => saved = s,
+                secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(string.Empty);
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.NotNull(saved);
+            Assert.Equal("Settings saved.", window.SettingsStatusText);
+        });
+    }
+
+    [Fact]
+    public void AKeyChangedAfterAStandaloneKeySaveIsCommittedAgainBySaveSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            // Must differ from ValidKey's fill character or this test proves nothing.
+            var otherKey = new string('d', 64);
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.SaveApiKey().GetAwaiter().GetResult();
+            Assert.Equal(ValidKey, store.ReadApiKey());
+
+            window.SetApiKeyText(otherKey);
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(otherKey, store.ReadApiKey());
+        });
+    }
+
+    [Fact]
+    public void WhitespaceAroundAnUnsavedKeyIsTrimmedBySaveSettings()
+    {
+        StaTestRunner.Run(() =>
+        {
+            string? probed = null;
+            var store = new FakeSecretStore();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: store,
+                validateApiKey: (key, _) => { probed = key; return Task.FromResult(ApiKeyValidationStatus.Valid); });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("  " + ValidKey + "\n");
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(ValidKey, probed);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+        });
+    }
+
+    [Fact]
+    public void ABadKeyOverAStoredKeyBlocksTheSaveAndKeepsTheStoredKey()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var savedCount = 0;
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => savedCount++,
+                secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText("nudged");
+            window.SaveSettings().GetAwaiter().GetResult();
+
+            Assert.Equal(0, savedCount);
+            Assert.Equal(ValidKey, store.ReadApiKey());
+            Assert.Equal("API key must be 64 hex characters.", window.ApiKeyStatusText);
+            Assert.Equal("API key must be 64 hex characters.", window.SettingsStatusText);
         });
     }
 
@@ -481,6 +700,72 @@ public class SettingsWindowTests
             allowValidation.SetResult(ApiKeyValidationStatus.Valid);
 
             Assert.True(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+        });
+    }
+
+    [Fact]
+    public void ClearAndSaveKeyAreUnavailableWhileASettingsSaveProbeIsInFlight()
+    {
+        StaTestRunner.Run(() =>
+        {
+            // Plain TaskCompletionSources on purpose: resolving them below runs
+            // the rest of the save inline on this thread, which is the only way
+            // to assert mid-flight state without a live dispatcher message loop.
+            var validationStarted = new TaskCompletionSource();
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: new FakeSecretStore(),
+                validateApiKey: (_, _) =>
+                {
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.ViewModel.SaveSettingsCommand.Execute(null);
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+            Assert.False(window.ViewModel.SaveApiKeyCommand.CanExecute(null));
+
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+
+            Assert.True(window.ViewModel.ClearApiKeyCommand.CanExecute(null));
+            Assert.True(window.ViewModel.SaveApiKeyCommand.CanExecute(null));
+        });
+    }
+
+    [Fact]
+    public void SaveSettingsIsUnavailableWhileAStandaloneKeySaveIsInFlight()
+    {
+        StaTestRunner.Run(() =>
+        {
+            // Same inline-resolution pattern as above.
+            var validationStarted = new TaskCompletionSource();
+            var allowValidation = new TaskCompletionSource<ApiKeyValidationStatus>();
+            var window = new SettingsWindow(
+                AppSettings.Default,
+                saveSettings: _ => { },
+                secretStore: new FakeSecretStore(),
+                validateApiKey: (_, _) =>
+                {
+                    validationStarted.SetResult();
+                    return allowValidation.Task;
+                });
+            using var closer = new WindowCloser(window);
+
+            window.SetApiKeyText(ValidKey);
+            window.ViewModel.SaveApiKeyCommand.Execute(null);
+            validationStarted.Task.GetAwaiter().GetResult();
+
+            Assert.False(window.ViewModel.SaveSettingsCommand.CanExecute(null));
+
+            allowValidation.SetResult(ApiKeyValidationStatus.Valid);
+
+            Assert.True(window.ViewModel.SaveSettingsCommand.CanExecute(null));
         });
     }
 
