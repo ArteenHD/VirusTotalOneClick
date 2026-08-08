@@ -211,9 +211,12 @@ public sealed class UploadProgressViewModel : ObservableObject
     public bool ShowOpenSettings =>
         _hasRun && !_isUploadRunning && Items.Any(item => item.Status == "Needs API key");
 
-    public void OpenFirstResult()
+    public void OpenFirstResult() => OpenResultUrl(GetFirstResultUrl());
+
+    public void OpenRowResult(UploadQueueItem? row) => OpenResultUrl(row?.ResultUrl);
+
+    private void OpenResultUrl(string? resultUrl)
     {
-        var resultUrl = GetFirstResultUrl();
         if (_openResultUrl is null || resultUrl is null || !_canOpenResultUrl(resultUrl))
         {
             return;

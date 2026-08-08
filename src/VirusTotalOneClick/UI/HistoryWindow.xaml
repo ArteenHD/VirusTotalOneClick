@@ -110,11 +110,19 @@
                         <GridViewColumn Header="Result" Width="150">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock
-                                        Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
-                                        Text="{Binding ResultUrl}"
-                                        TextTrimming="CharacterEllipsis"
-                                        ToolTip="{Binding ResultUrl}" />
+                                    <TextBlock TextTrimming="CharacterEllipsis" ToolTip="{Binding ResultUrl}">
+                                        <TextBlock.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem
+                                                    Header="Copy link"
+                                                    Icon="{ui:SymbolIcon Copy24}"
+                                                    Click="OnCopyResultLinkClick" />
+                                            </ContextMenu>
+                                        </TextBlock.ContextMenu>
+                                        <Hyperlink Click="OnResultLinkClick">
+                                            <Run Text="{Binding ResultUrl, Mode=OneWay}" />
+                                        </Hyperlink>
+                                    </TextBlock>
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>

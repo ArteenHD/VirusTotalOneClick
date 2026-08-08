@@ -109,6 +109,8 @@ public sealed class HistoryViewModel : ObservableObject
 
     public void OpenFirstResult() => OpenResult(VisibleRows.FirstOrDefault()?.ResultUrl);
 
+    public void OpenRowResult(HistoryRowViewModel? row) => OpenResult(row?.ResultUrl);
+
     private void OpenResult(string? resultUrl)
     {
         if (_openResultUrl is null || resultUrl is null || !_canOpenResultUrl(resultUrl))

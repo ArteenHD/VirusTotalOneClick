@@ -61,6 +61,28 @@ public class HistoryWindowTests
     }
 
     [Fact]
+    public void ARowLinkOpensThatRowsResultRegardlessOfSelection()
+    {
+        StaTestRunner.Run(() =>
+        {
+            string? opened = null;
+            var now = DateTimeOffset.UtcNow;
+            var window = new HistoryWindow(
+                [
+                    Entry(@"C:\first.txt", now, url: "https://www.virustotal.com/gui/file/first"),
+                    Entry(@"C:\second.txt", now.AddMinutes(-1), url: "https://www.virustotal.com/gui/file/second"),
+                ],
+                openResultUrl: url => opened = url);
+            using var closer = new WindowCloser(window);
+
+            window.ViewModel.SelectedRow = window.ViewModel.VisibleRows[0];
+            window.ViewModel.OpenRowResult(window.ViewModel.VisibleRows[1]);
+
+            Assert.Equal("https://www.virustotal.com/gui/file/second", opened);
+        });
+    }
+
+    [Fact]
     public void ASearchThatHidesTheSelectedRowClearsTheSelection()
     {
         StaTestRunner.Run(() =>

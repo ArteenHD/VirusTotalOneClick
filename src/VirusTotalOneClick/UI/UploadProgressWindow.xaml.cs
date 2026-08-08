@@ -83,4 +83,28 @@ public partial class UploadProgressWindow : AppWindow
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e) => _ = TryTriggerAutoStart();
+
+    private void OnResultLinkClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Documents.Hyperlink { DataContext: UploadQueueItem row })
+        {
+            _viewModel.OpenRowResult(row);
+        }
+    }
+
+    private void OnCopyResultLinkClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: UploadQueueItem row }
+            && row.ResultUrl is { Length: > 0 } url)
+        {
+            try
+            {
+                Clipboard.SetText(url);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // Another process holds the clipboard; the copy simply doesn't land.
+            }
+        }
+    }
 }

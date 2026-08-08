@@ -17,6 +17,8 @@ public class DesignFoundationTests
     [InlineData("SubtleFillColorSecondaryBrush")]
     [InlineData("SubtleFillColorTertiaryBrush")]
     [InlineData("AccentFillColorDefaultBrush")]
+    [InlineData("AccentTextFillColorPrimaryBrush")]
+    [InlineData("AccentTextFillColorSecondaryBrush")]
     public void TheStatusColorVocabularyResolvesFromTheme(string key)
     {
         StaTestRunner.Run(() =>

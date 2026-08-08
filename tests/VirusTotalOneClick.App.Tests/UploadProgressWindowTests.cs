@@ -303,6 +303,32 @@ public class UploadProgressWindowTests
     }
 
     [Fact]
+    public void ARowLinkOpensThatRowsResultNotTheFirst()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var openedUrls = new List<string>();
+            var window = new UploadProgressWindow(
+                Files(@"C:\one.txt", @"C:\two.txt"),
+                _ => Task.FromResult(new FileUploadWorkflowResult(
+                    FileUploadWorkflowStatus.Completed,
+                    2,
+                    ItemResults:
+                    [
+                        Item(@"C:\one.txt", "uploaded", "https://www.virustotal.com/gui/file/one"),
+                        Item(@"C:\two.txt", "uploaded", "https://www.virustotal.com/gui/file/two"),
+                    ])),
+                openResultUrl: openedUrls.Add);
+            using var closer = new WindowCloser(window);
+
+            window.RunUploadAsync(CancellationToken.None).GetAwaiter().GetResult();
+            window.ViewModel.OpenRowResult(window.ViewModel.Items[1]);
+
+            Assert.Equal(["https://www.virustotal.com/gui/file/two"], openedUrls);
+        });
+    }
+
+    [Fact]
     public void AutoStartReflectsTheConstructorAndFiresExactlyOnce()
     {
         StaTestRunner.Run(() =>

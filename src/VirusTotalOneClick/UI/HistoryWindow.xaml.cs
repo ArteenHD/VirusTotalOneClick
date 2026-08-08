@@ -37,5 +37,29 @@ public partial class HistoryWindow : AppWindow
 
     public void OpenFirstResult() => _viewModel.OpenFirstResult();
 
+    private void OnResultLinkClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Documents.Hyperlink { DataContext: HistoryRowViewModel row })
+        {
+            _viewModel.OpenRowResult(row);
+        }
+    }
+
+    private void OnCopyResultLinkClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: HistoryRowViewModel row }
+            && row.ResultUrl is { Length: > 0 } url)
+        {
+            try
+            {
+                Clipboard.SetText(url);
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // Another process holds the clipboard; the copy simply doesn't land.
+            }
+        }
+    }
+
     private void OnCloseClick(object sender, RoutedEventArgs e) => Close();
 }
