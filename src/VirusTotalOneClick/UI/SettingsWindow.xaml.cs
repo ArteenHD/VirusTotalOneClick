@@ -22,6 +22,9 @@ public partial class SettingsWindow : AppWindow
             settings, saveSettings, secretStore, clearHistory, applyIntegration, openHistory, validateApiKey, apiKeyValidator);
         DataContext = _viewModel;
         InitializeComponent();
+        // The viewmodel loads the saved key before the password box exists, so
+        // push it in once here; it shows masked until the reveal button is used.
+        SyncPasswordBoxFromViewModel();
         Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
     }

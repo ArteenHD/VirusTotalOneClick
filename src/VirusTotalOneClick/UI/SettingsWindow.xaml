@@ -9,9 +9,6 @@
     MinWidth="760"
     MinHeight="480"
     ResizeMode="CanResize">
-    <local:AppWindow.Resources>
-        <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
-    </local:AppWindow.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -68,12 +65,6 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Top">
                             <ui:Button Content="Save key" Command="{Binding SaveApiKeyCommand}" />
                             <ui:Button Content="Clear" Margin="8,0,0,0" Command="{Binding ClearApiKeyCommand}" />
-                            <ui:SymbolIcon
-                                Symbol="CheckmarkCircle24"
-                                Margin="12,0,0,0"
-                                VerticalAlignment="Center"
-                                Foreground="{DynamicResource SystemFillColorSuccessBrush}"
-                                Visibility="{Binding HasSavedApiKey, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </Grid>
                 </ui:Card>

@@ -69,7 +69,8 @@ public sealed class SettingsViewModel : ObservableObject
         _enableStartMenuShortcuts = settings.EnableStartMenuShortcuts;
         _launchOnStartup = settings.LaunchOnStartup;
 
-        _hasSavedApiKey = !string.IsNullOrEmpty(_secretStore?.ReadApiKey());
+        _apiKeyText = _secretStore?.ReadApiKey() ?? string.Empty;
+        _hasSavedApiKey = _apiKeyText.Length > 0;
         _apiKeyStatusText = _hasSavedApiKey ? "API key saved." : "No API key saved.";
         _historyStatusText = settings.KeepLocalHistory
             ? "Local history is enabled."

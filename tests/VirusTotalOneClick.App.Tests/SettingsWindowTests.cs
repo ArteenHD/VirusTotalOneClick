@@ -342,6 +342,35 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void ASavedKeyPreloadsIntoTheKeyBox()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(AppSettings.Default, secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(ValidKey, window.ViewModel.ApiKeyText);
+            Assert.Equal(ValidKey, window.ApiKeyPasswordBox.Password);
+            Assert.Equal("API key saved.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
+    public void WithoutASavedKeyTheKeyBoxStartsEmpty()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var window = new SettingsWindow(AppSettings.Default, secretStore: new FakeSecretStore());
+            using var closer = new WindowCloser(window);
+
+            Assert.Equal(string.Empty, window.ApiKeyPasswordBox.Password);
+            Assert.Equal("No API key saved.", window.ApiKeyStatusText);
+        });
+    }
+
+    [Fact]
     public void ClearRemovesTheStoredKeyImmediately()
     {
         StaTestRunner.Run(() =>
