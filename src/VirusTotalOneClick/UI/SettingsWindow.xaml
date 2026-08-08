@@ -5,7 +5,7 @@
     xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
     xmlns:local="clr-namespace:VirusTotalOneClick.UI"
     Width="920"
-    Height="830"
+    Height="800"
     MinWidth="760"
     MinHeight="480"
     ResizeMode="CanResize">
@@ -13,7 +13,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
@@ -194,6 +193,12 @@
                     Style="{StaticResource CaptionTextStyle}"
                     VerticalAlignment="Center"
                     Text="{Binding SettingsStatusText}" />
+                <TextBlock
+                    Grid.ColumnSpan="2"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource CaptionTextStyle}"
+                    Text="{Binding VersionCaption}" />
                 <ui:Button
                     x:Name="SaveSettingsButton"
                     Grid.Column="1"
@@ -203,12 +208,5 @@
                     Command="{Binding SaveSettingsCommand}" />
             </Grid>
         </Border>
-
-        <TextBlock
-            Grid.Row="3"
-            Margin="24,4,24,8"
-            HorizontalAlignment="Center"
-            Style="{StaticResource CaptionTextStyle}"
-            Text="{Binding VersionCaption}" />
     </Grid>
 </local:AppWindow>

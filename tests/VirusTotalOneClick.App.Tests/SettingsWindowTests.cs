@@ -32,7 +32,7 @@ public class SettingsWindowTests
             using var closer = new WindowCloser(window);
 
             Assert.Equal(
-                AppWindow.ClampHeightToWorkArea(830, SystemParameters.WorkArea.Height, window.MinHeight),
+                AppWindow.ClampHeightToWorkArea(800, SystemParameters.WorkArea.Height, window.MinHeight),
                 window.Height);
         });
     }
