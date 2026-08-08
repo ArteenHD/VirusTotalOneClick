@@ -27,6 +27,17 @@ public partial class SettingsWindow : AppWindow
         SyncPasswordBoxFromViewModel();
         Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Loaded += OnLoaded;
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        // When the work-area clamp leaves the page taller than the viewport,
+        // startup layout of the prefilled key box can drift the scroll
+        // position, so the page is pinned back to the top after layout settles.
+        Dispatcher.BeginInvoke(
+            System.Windows.Threading.DispatcherPriority.Background,
+            new Action(PageScroller.ScrollToTop));
     }
 
     public IReadOnlyList<string> SectionNames { get; } = SettingsViewModel.Sections;

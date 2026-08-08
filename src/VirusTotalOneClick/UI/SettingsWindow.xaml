@@ -22,7 +22,7 @@
             </ui:TitleBar.Icon>
         </ui:TitleBar>
 
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer x:Name="PageScroller" Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="{StaticResource PagePadding}">
                 <Grid>
                     <Grid.ColumnDefinitions>

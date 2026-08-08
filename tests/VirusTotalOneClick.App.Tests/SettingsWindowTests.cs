@@ -340,6 +340,25 @@ public class SettingsWindowTests
     }
 
     [Fact]
+    public void TheWindowOpensScrolledToTheTopEvenWhenContentOverflows()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var store = new FakeSecretStore();
+            store.SaveApiKey(ValidKey);
+            var window = new SettingsWindow(AppSettings.Default, secretStore: store);
+            using var closer = new WindowCloser(window);
+
+            window.Height = 520;
+            window.Show();
+            window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+            Assert.True(window.PageScroller.ScrollableHeight > 0);
+            Assert.Equal(0d, window.PageScroller.VerticalOffset);
+        });
+    }
+
+    [Fact]
     public void ASavedKeyPreloadsIntoTheKeyBox()
     {
         StaTestRunner.Run(() =>
