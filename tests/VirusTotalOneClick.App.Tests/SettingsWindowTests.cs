@@ -145,7 +145,7 @@ public class SettingsWindowTests
     }
 
     [Fact]
-    public void TheSavedApiKeyNeverAppearsInSettings()
+    public void TheSavedApiKeyNeverAppearsInTheSavedSettings()
     {
         StaTestRunner.Run(() =>
         {
@@ -161,7 +161,6 @@ public class SettingsWindowTests
             Assert.Equal(ValidKey, store.ReadApiKey());
             Assert.DoesNotContain(ValidKey, saved!.ToString(), StringComparison.Ordinal);
             Assert.Equal("API key saved.", window.ApiKeyStatusText);
-            Assert.True(window.ViewModel.HasSavedApiKey);
         });
     }
 
@@ -316,7 +315,6 @@ public class SettingsWindowTests
             window.SaveApiKey().GetAwaiter().GetResult();
 
             Assert.Null(store.ReadApiKey());
-            Assert.False(window.ViewModel.HasSavedApiKey);
             Assert.Contains("rejected", window.ApiKeyStatusText, StringComparison.OrdinalIgnoreCase);
         });
     }
@@ -353,6 +351,10 @@ public class SettingsWindowTests
 
             Assert.Equal(ValidKey, window.ViewModel.ApiKeyText);
             Assert.Equal(ValidKey, window.ApiKeyPasswordBox.Password);
+            Assert.False(window.ApiKeyPasswordBox.IsPasswordRevealed);
+            Assert.Equal(
+                new string(window.ApiKeyPasswordBox.PasswordChar, ValidKey.Length),
+                window.ApiKeyPasswordBox.Text);
             Assert.Equal("API key saved.", window.ApiKeyStatusText);
         });
     }
@@ -380,13 +382,13 @@ public class SettingsWindowTests
             var window = new SettingsWindow(AppSettings.Default, secretStore: store);
             using var closer = new WindowCloser(window);
 
-            Assert.True(window.ViewModel.HasSavedApiKey);
+            Assert.Equal(ValidKey, window.ViewModel.ApiKeyText);
 
             window.ViewModel.ClearApiKey();
 
             Assert.Null(store.ReadApiKey());
-            Assert.False(window.ViewModel.HasSavedApiKey);
             Assert.Equal(string.Empty, window.ViewModel.ApiKeyText);
+            Assert.Equal(string.Empty, window.ApiKeyPasswordBox.Password);
             Assert.Equal("API key cleared.", window.ApiKeyStatusText);
         });
     }
@@ -405,7 +407,7 @@ public class SettingsWindowTests
 
             Assert.Null(exception);
             Assert.Equal(ValidKey, store.ReadApiKey());
-            Assert.True(window.ViewModel.HasSavedApiKey);
+            Assert.Equal(ValidKey, window.ViewModel.ApiKeyText);
             Assert.StartsWith("Could not clear API key", window.ApiKeyStatusText, StringComparison.Ordinal);
         });
     }

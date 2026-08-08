@@ -27,7 +27,6 @@ public sealed class SettingsViewModel : ObservableObject
     private string _apiKeyText = string.Empty;
     private string _settingsStatusText = "Settings not saved in this session.";
     private string _apiKeyStatusText;
-    private bool _hasSavedApiKey;
     private string _historyStatusText;
 
     private bool _confirmBeforeFileUpload;
@@ -70,8 +69,7 @@ public sealed class SettingsViewModel : ObservableObject
         _launchOnStartup = settings.LaunchOnStartup;
 
         _apiKeyText = _secretStore?.ReadApiKey() ?? string.Empty;
-        _hasSavedApiKey = _apiKeyText.Length > 0;
-        _apiKeyStatusText = _hasSavedApiKey ? "API key saved." : "No API key saved.";
+        _apiKeyStatusText = _apiKeyText.Length > 0 ? "API key saved." : "No API key saved.";
         _historyStatusText = settings.KeepLocalHistory
             ? "Local history is enabled."
             : "Local history is disabled.";
@@ -119,12 +117,6 @@ public sealed class SettingsViewModel : ObservableObject
     {
         get => _apiKeyStatusText;
         private set => SetProperty(ref _apiKeyStatusText, value);
-    }
-
-    public bool HasSavedApiKey
-    {
-        get => _hasSavedApiKey;
-        private set => SetProperty(ref _hasSavedApiKey, value);
     }
 
     public string HistoryStatusText
@@ -288,10 +280,6 @@ public sealed class SettingsViewModel : ObservableObject
             cancellationToken).ConfigureAwait(true);
 
         ApiKeyStatusText = outcome.StatusText;
-        if (outcome.Saved)
-        {
-            HasSavedApiKey = true;
-        }
     }
 
     public void ClearApiKey()
@@ -307,7 +295,6 @@ public sealed class SettingsViewModel : ObservableObject
         }
 
         ApiKeyText = string.Empty;
-        HasSavedApiKey = false;
         ApiKeyStatusText = "API key cleared.";
     }
 
