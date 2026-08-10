@@ -59,17 +59,18 @@
                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                 ItemsSource="{Binding VisibleRows}"
                 SelectedItem="{Binding SelectedRow}"
-                SelectionMode="Single">
+                SelectionMode="Single"
+                local:GridViewColumnFill.Enabled="True">
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Header="Date" Width="110">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding DateDisplay}" />
+                                    <TextBlock Text="{Binding DateDisplay}" TextTrimming="CharacterEllipsis" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Original file" Width="220">
+                        <GridViewColumn Header="Original file" Width="220" local:GridViewColumnFill.Weight="3">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock
@@ -79,14 +80,14 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Submitted name" Width="150">
+                        <GridViewColumn Header="Submitted name" Width="140">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding SubmittedName}" TextTrimming="CharacterEllipsis" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="SHA-256" Width="130">
+                        <GridViewColumn Header="SHA-256" Width="110">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding Sha256Display}" ToolTip="{Binding Sha256}" />
@@ -100,14 +101,14 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Status" Width="100">
+                        <GridViewColumn Header="Status" Width="90">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock Text="{Binding StatusLabel}" />
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Result" Width="150">
+                        <GridViewColumn Header="Result" Width="150" local:GridViewColumnFill.Weight="2">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock TextTrimming="CharacterEllipsis" ToolTip="{Binding ResultUrl}">

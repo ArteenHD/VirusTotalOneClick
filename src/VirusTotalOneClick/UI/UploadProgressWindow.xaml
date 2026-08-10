@@ -122,7 +122,8 @@
                 BorderThickness="0"
                 Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                 ItemsSource="{Binding Items}"
-                SelectionMode="Single">
+                SelectionMode="Single"
+                local:GridViewColumnFill.Enabled="True">
                 <ListView.View>
                     <GridView>
                         <GridViewColumn Width="44">
@@ -132,7 +133,7 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Original file" Width="280">
+                        <GridViewColumn Header="Original file" Width="280" local:GridViewColumnFill.Weight="3">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock
@@ -159,7 +160,7 @@
                                 </DataTemplate>
                             </GridViewColumn.CellTemplate>
                         </GridViewColumn>
-                        <GridViewColumn Header="Result" Width="180">
+                        <GridViewColumn Header="Result" Width="180" local:GridViewColumnFill.Weight="2">
                             <GridViewColumn.CellTemplate>
                                 <DataTemplate>
                                     <TextBlock TextTrimming="CharacterEllipsis" ToolTip="{Binding ResultUrl}">
