@@ -61,6 +61,34 @@ public class HistoryWindowTests
     }
 
     [Fact]
+    public void SearchMatchesInTheMiddleOfANameAndIgnoresSurroundingWhitespace()
+    {
+        StaTestRunner.Run(() =>
+        {
+            var now = DateTimeOffset.UtcNow;
+            var window = new HistoryWindow(
+            [
+                Entry(@"C:\test document.pdf", now, submittedName: "test document.pdf"),
+                Entry(@"C:\other.txt", now.AddMinutes(-1)),
+            ]);
+            using var closer = new WindowCloser(window);
+
+            window.Search("document");
+            Assert.Equal(1, window.VisibleEntryCount);
+            Assert.Equal(@"C:\test document.pdf", window.FirstOriginalPathText);
+
+            window.Search("document ");
+            Assert.Equal(1, window.VisibleEntryCount);
+
+            window.Search(" DOCUMENT");
+            Assert.Equal(1, window.VisibleEntryCount);
+
+            window.Search("ocumen");
+            Assert.Equal(1, window.VisibleEntryCount);
+        });
+    }
+
+    [Fact]
     public void ARowLinkOpensThatRowsResultRegardlessOfSelection()
     {
         StaTestRunner.Run(() =>

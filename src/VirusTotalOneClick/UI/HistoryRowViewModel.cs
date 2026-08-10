@@ -49,12 +49,13 @@ public sealed class HistoryRowViewModel
             return true;
         }
 
-        return Contains(OriginalPath, query)
-            || Contains(SubmittedName, query)
-            || Contains(Sha256, query)
-            || Contains(Mode, query)
-            || Contains(Status, query)
-            || Contains(ResultUrl, query);
+        var needle = query.Trim();
+        return Contains(OriginalPath, needle)
+            || Contains(SubmittedName, needle)
+            || Contains(Sha256, needle)
+            || Contains(Mode, needle)
+            || Contains(Status, needle)
+            || Contains(ResultUrl, needle);
     }
 
     internal static string FormatDate(DateTimeOffset uploadedAt, DateTimeOffset now)

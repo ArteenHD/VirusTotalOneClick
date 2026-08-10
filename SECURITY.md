@@ -14,4 +14,4 @@ Include what you can: affected version, reproduction steps, and impact. This pro
 
 In scope: this application — the installer, the Explorer integration, API key storage, upload handling, and anything else in this repository.
 
-Out of scope: the VirusTotal service itself (report to [Google's VRP](https://bughunters.google.com/)), and the general limitation that DPAPI current-user encryption cannot protect the API key from malware already running as the same user — that boundary is documented in the README and is inherent to the design.
+Out of scope: the VirusTotal service itself (report to [Google's VRP](https://bughunters.google.com/)), and the inherent limitation that DPAPI current-user encryption cannot protect the API key from code already running as the same user.
