@@ -17,6 +17,7 @@ public partial class HistoryWindow : AppWindow
         _viewModel = new HistoryViewModel(entries, openResultUrl, canOpenResultUrl, clearHistory, keepHistoryEnabled);
         DataContext = _viewModel;
         InitializeComponent();
+        Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
     }
 
     public HistoryViewModel ViewModel => _viewModel;

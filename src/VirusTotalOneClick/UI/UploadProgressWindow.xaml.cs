@@ -32,6 +32,7 @@ public partial class UploadProgressWindow : AppWindow
             uploadActionFactory: uploadActionFactory);
         DataContext = _viewModel;
         InitializeComponent();
+        Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
 
         if (Content is UIElement content)
         {

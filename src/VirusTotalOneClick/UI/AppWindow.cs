@@ -10,6 +10,16 @@ namespace VirusTotalOneClick.UI;
 /// </summary>
 public class AppWindow : FluentWindow
 {
+    /// <summary>
+    /// Default and minimum size shared by the task windows (upload queue,
+    /// folder review, history) so they present as one family. The settings
+    /// window is exempt: it sizes itself to fit its page.
+    /// </summary>
+    public const double TaskWindowWidth = 900;
+    public const double TaskWindowHeight = 600;
+    public const double TaskWindowMinWidth = 800;
+    public const double TaskWindowMinHeight = 560;
+
     public AppWindow()
     {
         Title = "VirusTotal OneClick";

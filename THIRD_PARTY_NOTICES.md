@@ -2,6 +2,10 @@
 
 VirusTotal OneClick bundles the following third-party components. Each is used under the MIT License; the full license text is reproduced at the bottom of this file with each project's copyright line.
 
+## Trademarks
+
+The application icon is the VirusTotal logo. VirusTotal and its logo are trademarks of Google LLC, used to identify the service this tool uploads to. They are not covered by this repository's MIT license, and their use does not imply any affiliation with or endorsement by VirusTotal or Google.
+
 ## WPF-UI
 
 - Project: <https://github.com/lepoco/wpfui>

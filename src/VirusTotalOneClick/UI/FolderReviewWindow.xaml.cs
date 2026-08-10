@@ -1,3 +1,4 @@
+using System.Windows;
 using VirusTotalOneClick.Core;
 
 namespace VirusTotalOneClick.UI;
@@ -38,6 +39,7 @@ public partial class FolderReviewWindow : AppWindow, IDisposable
             scanFileLimit);
         DataContext = _viewModel;
         InitializeComponent();
+        Height = ClampHeightToWorkArea(Height, SystemParameters.WorkArea.Height, MinHeight);
         ScanCompletion = LoadAsync();
     }
 
